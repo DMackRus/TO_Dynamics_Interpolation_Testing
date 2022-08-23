@@ -1,3 +1,4 @@
+from operator import delitem
 import matplotlib.pyplot as plt
 from platform import python_version
 import numpy as np
@@ -119,7 +120,7 @@ def evaluateInterpolation(testTrajectories, states, controls):
     # loop over the test trajectories
     for j in range(len(testTrajectories)):
 
-        reEvaluationIndicies = createListReupdatePoints(states[j], controls[j], 5, 200, 0.01)
+        reEvaluationIndicies = createListReupdatePoints(states[j], controls[j], 5, 200, 0.005)
         numBins[j] = len(reEvaluationIndicies)
         print(reEvaluationIndicies)
         linInterpolationData = generateLinearInterpolationData(testTrajectories[j], reEvaluationIndicies)
@@ -143,21 +144,27 @@ def calcMeanSumSquaredDiffForTrajec(groundTruth, prediction):
     if(array1Size < array2Size):
         lenofTrajec = array1Size
     
-    sumSqDiff = np.zeros((lenofTrajec))
+    SqDiff = np.zeros((lenofTrajec, size))
+    meanSqDiff = np.zeros((size))
+
 
     for i in range(lenofTrajec):
-        diffVals = np.zeros((size))
         
         for j in range(size):
 
-            diffVals[j] = groundTruth[i, j] - prediction[i, j]
-            sumSqDiff[i] = sumSqDiff[i] + (diffVals[j] * diffVals[j])
+            diffVals = (groundTruth[i, j] - prediction[i, j]) * (groundTruth[i, j] - prediction[i, j])
+            if(diffVals < 10):
+                
+                SqDiff[i, j] = diffVals
+            else:
+                SqDiff[i, j] = 0
+                print("oopsie big diff: " + str(diffVals))
 
-        # print(sumSqDiff[i])
+    for j in range(size):
+        meanSqDiff[j] = np.mean(SqDiff[:,j])
 
-    #print(sumSqDiff[0:10])
-
-    meanSumSquared = np.mean(sumSqDiff)
+    #print("sum squared diff matrices: " + str(sumSqDiff))
+    meanSumSquared = np.mean(meanSqDiff)
 
     return meanSumSquared 
 
@@ -169,6 +176,9 @@ def plottingScatter():
     pandas = pd.read_csv('error_quad.csv', header=None)
     error_quad = pandas.to_numpy()
 
+    pandas = pd.read_csv('error_NN.csv', header=None)
+    error_NN = pandas.to_numpy()
+
     pandas = pd.read_csv('numEvalsDynamicsLin.csv', header=None)
     numEvalsLin = pandas.to_numpy()
 
@@ -179,17 +189,41 @@ def plottingScatter():
     #normalEvals = np.array([2, 5, 10, 20, 50, 100, 200, 500])
     data_error_lin = np.zeros((len(error_lin), 2))
     data_error_quad = np.zeros((len(error_quad), 2))
-    data_error_dynLin = np.zeros((len(error_quad), 2))
+    data_error_NN = np.zeros((len(error_NN), 2))
+    data_error_dynLin = np.zeros((len(error_dynlin), 2))
+    
 
-    for i in range(len(error_lin)):
+    for i in range(len(normalEvals)):
         data_error_lin[i, 0] = error_lin[i]
         data_error_lin[i, 1] = normalEvals[i]
 
         data_error_quad[i, 0] = error_quad[i]
         data_error_quad[i, 1] = normalEvals[i]
 
+        data_error_NN[i, 0] = error_NN[i]
+        data_error_NN[i, 1] = normalEvals[i]
+
+    for i in range(len(error_dynlin)):
+
         data_error_dynLin[i, 0] = error_dynlin[i]
         data_error_dynLin[i, 1] = numEvalsLin[i]
+
+    colors = ["r", "b", "g"]
+
+    print(data_error_lin[:,1])
+    print(data_error_lin[:,0])
+
+    plt.scatter(data_error_lin[:,1], data_error_lin[:,0], color = "r", label='Linear Interpolation')
+    plt.scatter(data_error_quad[:,1], data_error_quad[:,0], color = "b", label='Quadratic Interpolation')
+    plt.scatter(data_error_NN[:,1], data_error_NN[:,0], color = "m", label='NN Interpolation')
+    plt.scatter(data_error_dynLin[:,1], data_error_dynLin[:,0], color = "g", label='Dynamic Linear Interpolation')
+
+    plt.xlabel("Number of dynamic Evaluations")
+    plt.ylabel("Mean Sum Squared Error")
+    plt.title('Comparing different interpolation methods for different step sizes')
+    plt.legend()
+
+    plt.show()
 
 
 def main():
@@ -226,13 +260,12 @@ def main():
 
     meanSSD = np.mean(sumSquaredDiffs) 
     avgEvals = np.mean(numEvals)
-    print("mean sum sqaured diff: " + str(meanSSD))
+    print("mean sum squared diff: " + str(meanSSD))
     print("average nuumber of evaluaions: " + str(avgEvals))
 
-
-
-
-
+    np.savetxt("sumSquaredDiffsDynamicLin.csv", sumSquaredDiffs, delimiter=',')
+    np.savetxt("numEvalsDynamicsLin.csv", numEvals, delimiter=',')
 
 
 main()
+plottingScatter()

@@ -18,14 +18,16 @@ sizeOfBMatrix = dof * num_ctrl
 
 def main():
     print("PROGRAM START")
-    pandas = pd.read_csv('Data/matrices_A.csv', header=None)
+    pandas = pd.read_csv('NN_Data/matrices_A.csv', header=None)
     A_matrices = pandas.to_numpy()
 
     print("SIZE OF A MATRICES"  + str(A_matrices.shape))
 
-    #savedStates = np.genfromtxt('savedStates.csv', delimiter=',')
-    pandas = pd.read_csv('Data/savedStates.csv', header=None)
+    pandas = pd.read_csv('NN_Data/savedStates.csv', header=None)
     states = pandas.to_numpy()
+
+    pandas = pd.read_csv('NN_Data/savedControls.csv', header=None)
+    controls = pandas.to_numpy()
 
     #only needed if csv is still saving a column of nans at end
     print("size of states: " + str(states.shape))
@@ -33,55 +35,78 @@ def main():
     normalised_unpackedAMatrices = unpackMatrices(A_matrices)
     print("FINISHED UNPACKING")
 
-    plt.plot(normalised_unpackedAMatrices[:,1])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,1])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,2])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,2])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,3])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,3])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,4])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,4])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,5])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,5])
+    # plt.show()
 
     normalised_unpackedAMatrices = removeOutliers(normalised_unpackedAMatrices)
     print("FINISHED REMOVING OUTLIERS")
 
-    plt.plot(normalised_unpackedAMatrices[:,1])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,1])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,2])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,2])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,3])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,3])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,4])
-    plt.show()
+    # plt.plot(normalised_unpackedAMatrices[:,4])
+    # plt.show()
 
-    plt.plot(normalised_unpackedAMatrices[:,5])
-    plt.show()
-    
+    # plt.plot(normalised_unpackedAMatrices[:,5])
+    # plt.show()
 
-    normalised_unpackedAMatrices = normaliseMatrices(normalised_unpackedAMatrices)
+    testingStartIndex = 985
+
+    testingTrajectories = normalised_unpackedAMatrices[(testingStartIndex * trajecLength):,:]
+    testingStates = states[(testingStartIndex * trajecLength):,:]
+    testingControls = controls[(testingStartIndex * trajecLength):,:]
+
+    pandas = pd.DataFrame(testingTrajectories)
+    pandas.to_csv("testing_data/testing_trajectories.csv", header=None, index=None)
+
+    pandas = pd.DataFrame(testingStates)
+    pandas.to_csv("testing_data/testing_states.csv", header=None, index=None)
+
+    pandas = pd.DataFrame(testingControls)
+    pandas.to_csv("testing_data/testing_controls.csv", header=None, index=None)
+
+    print("FINISHED SAVING TESTING TRAJECTORIES, STATES AND CONTROLS")
+
+    normalised_unpackedAMatrices, maxValA, minValA = normaliseMatrices(normalised_unpackedAMatrices)
+    normalised_states, maxValStates, minValStates = normaliseStates(states)
+
+    np.savetxt("testing_data/maxValuesA.csv", maxValA, delimiter=",")
+    np.savetxt("testing_data/minValuesA.csv", minValA, delimiter=",")
+    np.savetxt("testing_data/maxValuesStates.csv", maxValStates, delimiter=",")
+    np.savetxt("testing_data/minValuesStates.csv", minValStates, delimiter=",")
+
     print("FINISHED NORMALISING MATRICES")
 
     pandas = pd.DataFrame(normalised_unpackedAMatrices)
-    pandas.to_csv("Data/normalised_unpackedAMatrices.csv", header=None, index=None)
+    pandas.to_csv("NN_Data/normalised_unpackedAMatrices.csv", header=None, index=None)
     print("SAVED NORMALISED UNPACKED A MATRICES")
 
-    trainDataInputs_A, trainDataOutputs_A = createTrainingData(n, trajecLength, normalised_unpackedAMatrices, states, sizeOfAMatrix)
+    trainDataInputs_A, trainDataOutputs_A = createTrainingData(n, trajecLength, normalised_unpackedAMatrices, normalised_states, sizeOfAMatrix)
     print("TRAINING DATA CREATED")
 
     pandas = pd.DataFrame(trainDataInputs_A)
-    pandas.to_csv("Data/trainDataInputs_A.csv", header=None, index=None)
+    pandas.to_csv("NN_Data/trainDataInputs_A.csv", header=None, index=None)
 
     pandas = pd.DataFrame(trainDataOutputs_A)
-    pandas.to_csv("Data/trainDataOutputs_A.csv", header=None, index=None)
+    pandas.to_csv("NN_Data/trainDataOutputs_A.csv", header=None, index=None)
 
     print("TRAINING DATA SAVED")
     print("PROGRAM EXIT")
@@ -90,7 +115,7 @@ def main():
 def unpackMatrices(matricesA):
     rowAMatrix = np.zeros((1, sizeOfAMatrix))
     unpackedAMatrices = np.zeros((numTrajectories * trajecLength, sizeOfAMatrix))
-    for i in range((trajecLength * numTrajectories) - 1):
+    for i in range((trajecLength * numTrajectories)):
         if(i % 3000 == 0):
             print("trajec done: " + str(i/3000))
 
@@ -141,7 +166,30 @@ def normaliseMatrices(matrices):
                 
                 normalisedMatrices[startIndex + k, j] = (matrices[(i * trajecLength) + k, j] - minValA[j]) / (maxValA[j] - minValA[j])
 
-    return normalisedMatrices
+    return normalisedMatrices, maxValA, minValA
+
+def normaliseStates(states):
+
+    normalisedStates = np.zeros((numTrajectories * trajecLength, 2 * dof))
+
+    maxValStates = np.zeros(2 * dof)
+    minValStates = np.zeros(2 * dof)
+
+    for j in range(2 * dof):
+        maxValStates[j] = max(states[:, j])
+        minValStates[j] = min(states[:, j])
+
+    for i in range(numTrajectories):
+        startIndex = (i * trajecLength)
+        endIndex = ((i + 1) * trajecLength)
+
+        for j in range(2 * dof):
+            for k in range(trajecLength):
+                
+                normalisedStates[startIndex + k, j] = (states[(i * trajecLength) + k, j] - minValStates[j]) / (maxValStates[j] - minValStates[j])
+
+    return normalisedStates, maxValStates, minValStates
+
 
 
 def createTrainingData(n , trajecLength, trajecData, states, sizeOfMatrix):
