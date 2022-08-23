@@ -231,11 +231,11 @@ def evaluateInterpolationMethods(nValues, testTrajectories, states, minValsA, ma
             # plt.plot(NNInterpolationData[:, 1])
             # plt.show()
 
-            if(SSD_lin[j] > 5e-2):
-                plt.plot(testTrajectories[j][:, 23])
-                plt.plot(linInterpolationData[:, 23])
-                plt.plot(NNInterpolationData[:, 23])
-                plt.show()
+            # if(SSD_lin[j] > 5e-2):
+            #     plt.plot(testTrajectories[j][:, 23])
+            #     plt.plot(linInterpolationData[:, 23])
+            #     plt.plot(NNInterpolationData[:, 23])
+            #     plt.show()
 
         meanSSE_lin[i] = np.mean(SSD_lin) 
         print("------------------------------------------------")
@@ -274,14 +274,25 @@ def calcMeanSumSquaredDiffForTrajec(groundTruth, prediction):
         for j in range(size):
 
             diffVals = (groundTruth[i, j] - prediction[i, j]) * (groundTruth[i, j] - prediction[i, j])
-            if(diffVals < 10):
+            SqDiff[i, j] = diffVals
+            # if(diffVals < 10):
                 
-                SqDiff[i, j] = diffVals
-            else:
-                SqDiff[i, j] = 0
-                print("oopsie big diff: " + str(diffVals))
+                
+            # else:
+            #     SqDiff[i, j] = 0
+            #     print("oopsie big diff: " + str(diffVals))
 
     for j in range(size):
+        stddev = np.std(SqDiff[:,j])
+        mean = np.mean(SqDiff[:,j])
+
+        ok = SqDiff[:,j] > (mean - (3 * stddev))
+        SqDiff[~ok,j] = mean
+
+        #step 2, values higher than 1 std from mean
+        # ok = SqDiff[:,j] < (mean + ( 3 * stddev))
+        # SqDiff[~ok,j] = mean
+
         meanSqDiff[j] = np.mean(SqDiff[:,j])
 
     #print("sum squared diff matrices: " + str(sumSqDiff))

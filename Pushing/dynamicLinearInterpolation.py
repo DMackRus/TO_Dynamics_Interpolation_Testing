@@ -153,14 +153,24 @@ def calcMeanSumSquaredDiffForTrajec(groundTruth, prediction):
         for j in range(size):
 
             diffVals = (groundTruth[i, j] - prediction[i, j]) * (groundTruth[i, j] - prediction[i, j])
+            SqDiff[i, j] = diffVals
             if(diffVals < 10):
-                
                 SqDiff[i, j] = diffVals
             else:
                 SqDiff[i, j] = 0
                 print("oopsie big diff: " + str(diffVals))
 
     for j in range(size):
+        stddev = np.std(SqDiff[:,j])
+        mean = np.mean(SqDiff[:,j])
+
+        ok = SqDiff[:,j] > (mean - stddev)
+        SqDiff[~ok,j] = mean - stddev
+
+        #step 2, values higher than 1 std from mean
+        ok = SqDiff[:,j] < (mean + stddev)
+        SqDiff[~ok,j] = mean + stddev
+
         meanSqDiff[j] = np.mean(SqDiff[:,j])
 
     #print("sum squared diff matrices: " + str(sumSqDiff))
@@ -191,7 +201,6 @@ def plottingScatter():
     data_error_quad = np.zeros((len(error_quad), 2))
     data_error_NN = np.zeros((len(error_NN), 2))
     data_error_dynLin = np.zeros((len(error_dynlin), 2))
-    
 
     for i in range(len(normalEvals)):
         data_error_lin[i, 0] = error_lin[i]
@@ -264,15 +273,30 @@ def main():
     print("mean sum squared diff: " + str(meanSSD))
     print("average nuumber of evaluaions: " + str(avgEvals))
 
-
     np.savetxt("sumSquaredDiffsDynamicLin.csv", sumSquaredDiffs, delimiter=',')
     np.savetxt("numEvalsDynamicsLin.csv", numEvals, delimiter=',')
 
 
+def test():
+    data = np.array([1, 2, 3, 4, 5, 50, -50])
+    print(data)
+
+    stddev = np.std(data)
+    mean = np.mean(data)
+    print(mean )
+    print(stddev)
+
+    ok = data > (mean - stddev)
+    print(ok)
+    data[~ok] = mean - stddev
+
+    #step 2, values higher than 1 std from mean
+    ok = data < (mean + stddev)
+    data[~ok] = mean + stddev
+
+    print(data)
 
 
 
-
-
-#main()
-plottingScatter()
+main()
+#plottingScatter()
