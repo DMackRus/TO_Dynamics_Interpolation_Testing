@@ -12,7 +12,6 @@ if(len(sys.argv) < 2):
     exit()
 else:
     mode = int(sys.argv[1])
-    print(mode)
 
 dof = 0
 num_ctrl = 0
@@ -37,7 +36,7 @@ else:
     exit()
 
 trajecLength = 3000
-numTrajectoriesTest = 2
+numTrajectoriesTest = 10
 
 sizeofMatrix = dof * 2 * dof 
 inputSize = (2 * sizeofMatrix) + 1 + (2 * dof)

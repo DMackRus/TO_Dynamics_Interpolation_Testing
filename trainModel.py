@@ -14,7 +14,6 @@ if(len(sys.argv) < 2):
     exit()
 else:
     mode = int(sys.argv[1])
-    print(mode)
 
 dof = 0
 num_ctrl = 0
@@ -78,7 +77,7 @@ def main():
     print(loadOutputData_A.shape)
     print(loadInputData_A.shape)
 
-    splitIndex = 960 * 3000
+    splitIndex = 970 * 3000
     loadInputData_A = loadInputData_A[:splitIndex,:]
     loadOutputData_A = loadOutputData_A[:splitIndex,:]
 
