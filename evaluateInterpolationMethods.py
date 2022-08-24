@@ -5,7 +5,7 @@ import time
 import sys
 import tensorflow as tf
 
-print("PROGRAM START")
+print("PROGRAM START - EVALUATE INTERPOLATION METHODS")
 
 if(len(sys.argv) < 2):
     print("not enough arguments")

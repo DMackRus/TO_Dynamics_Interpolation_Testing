@@ -6,7 +6,7 @@ import pandas as pd
 import sys
 
 
-print("PROGRAM START")
+print("PROGRAM START - PLOT ERROR VS EVALUATIONS")
 
 if(len(sys.argv) < 2):
     print("not enough arguments")

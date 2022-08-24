@@ -6,7 +6,7 @@ from sklearn import datasets, linear_model
 from sklearn.model_selection import train_test_split
 import sys 
 
-print("PROGRAM START")
+print("PROGRAM START - CREATE TRAINING DATA")
 
 if(len(sys.argv) < 2):
     print("not enough arguments")
