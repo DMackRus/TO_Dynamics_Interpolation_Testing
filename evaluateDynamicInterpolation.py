@@ -6,13 +6,13 @@ import sys
 
 print("PROGRAM START - EVALUATE INTERPOLATION METHODS")
 
-mode = 2
+mode = 1
 
-if(len(sys.argv) < 2):
-    print("not enough arguments")
-    exit()
-else:
-    mode = int(sys.argv[1])
+# if(len(sys.argv) < 2):
+#     print("not enough arguments")
+#     exit()
+# else:
+#     mode = int(sys.argv[1])
 
 dof = 0
 num_ctrl = 0

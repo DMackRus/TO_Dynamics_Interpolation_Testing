@@ -66,7 +66,7 @@ class interpolator():
         self.displayData_raw = []
         self.displayData_inteprolated = []
 
-    def interpolateTrajectory(self, trajecNumber, dynParams):
+    def interpolateTrajectory(self, trajecNumber, dynParams, interpMethod):
         rawTrajec = self.testTrajectories[trajecNumber]
 
         self.dynParams = dynParams
@@ -76,7 +76,10 @@ class interpolator():
         numEvals = len(reEvaluationIndices)
         print("num evals: " + str(numEvals))
         #print(reEvaluationIndicies)
-        interpolatedTrajectory = self.generateLinInterpolation(rawTrajec, reEvaluationIndices.copy())
+        if(interpMethod == 0):
+            interpolatedTrajectory = self.generateLinInterpolation(rawTrajec, reEvaluationIndices.copy())
+        else:
+            interpolatedTrajectory = self.generateQuadInterpolation(rawTrajec, reEvaluationIndices.copy())
         print(interpolatedTrajectory.shape)
 
         return rawTrajec, interpolatedTrajectory, reEvaluationIndices
@@ -194,27 +197,84 @@ class interpolator():
         stepsBetween = 0
 
         for i in range(numBins):
-
-            for j in range(sizeofAMatrix):
                 
-                startIndex = reEvaluationIndicies[i]
-                #print("start index: " + str(startIndex))
-                startVals = A_matrices[startIndex,:]
-                #print("start val: " + str(startVals))
+            startIndex = reEvaluationIndicies[i]
+            startVals = A_matrices[startIndex,:]
 
-                endIndex = reEvaluationIndicies[i + 1]
-                endVals = A_matrices[endIndex,:]
-                #print("end val: " + str(endVals))
+            endIndex = reEvaluationIndicies[i + 1]
+            endVals = A_matrices[endIndex,:]
 
-                diff = endVals - startVals
-                #print("diff: " + str(diff))
+            diff = endVals - startVals
 
-                stepsBetween = endIndex - startIndex
+            stepsBetween = endIndex - startIndex
 
-                linInterpolationData[startIndex,:] = startVals
+            linInterpolationData[startIndex,:] = startVals
 
-                for k in range(1, stepsBetween):
-                    linInterpolationData[startIndex + k,:] = startVals + (diff * (k/stepsBetween))
+            for k in range(1, stepsBetween):
+                linInterpolationData[startIndex + k,:] = startVals + (diff * (k/stepsBetween))
 
         return linInterpolationData
+    
+    def generateQuadInterpolation(self, A_matrices, reEvaluationIndicies):
+        sizeofMatrix = len(A_matrices[0])
+        quadInterpolationData = np.zeros((self.trajecLength - 1, sizeofMatrix))
+
+        for i in range(len(reEvaluationIndicies) - 2):
+            startIndex = reEvaluationIndicies[i]
+            midIndex = reEvaluationIndicies[i + 1]
+            endIndex = reEvaluationIndicies[i + 2]
+
+            for j in range(sizeofMatrix):
+
+                if(j == 7):
+                    gdsgdfg = 1
+
+                points = np.zeros((3, 2))
+                point1 = np.array([A_matrices[startIndex, j], startIndex])
+                point2 = np.array([A_matrices[midIndex, j], midIndex])
+                point3 = np.array([A_matrices[endIndex, j], endIndex])
+
+                points[0] = point1
+                points[1] = point2
+                points[2] = point3
+
+                #solve for coefficients a, b, c
+
+                x_matrix = np.zeros((3, 3))
+                y_matrix = np.zeros((1, 3))
+
+                y_matrix[0, 0] = points[0, 0]
+                y_matrix[0, 1] = points[1, 0]
+                y_matrix[0, 2] = points[2, 0]
+
+                for k in range(3):
+
+                    x_matrix[0, k] = points[k, 1] * points[k, 1]
+                    x_matrix[1, k] = points[k, 1]
+                    x_matrix[2, k] = 1
+
+                    # x_matrix[0, k] = (endIndex - startIndex) * (endIndex - startIndex)
+                    # x_matrix[1, k] = (endIndex - startIndex)
+                    # x_matrix[2, k] = 1
+
+                x_inv = np.linalg.inv(x_matrix)
+
+                abc = y_matrix @ x_inv
+
+                quadInterpolationData[startIndex,j] = A_matrices[startIndex,j]
+                print("start val: " + str(A_matrices[startIndex,j]))
+                print("c: " + str(abc[0,2]))
+
+                counter = 0
+                for k in range(startIndex, endIndex):
+                    a = abc[0, 0]
+                    b = abc[0, 1]
+                    c = abc[0, 2]
+
+                    nextVal = (a * k * k) + (b * k) + c
+                    quadInterpolationData[startIndex + counter, j] = nextVal
+                    counter = counter + 1
+                    # quadInterpolationData[startIndex + k, j] = A_matrices[startIndex + k,j]
+
+        return quadInterpolationData
 

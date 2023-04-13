@@ -10,17 +10,19 @@ from matplotlib.lines import Line2D
 
 print("PROGRAM START - PLOT ERROR VS EVALUATIONS")
 
-if(len(sys.argv) < 2):
-    print("not enough arguments")
-    exit()
-else:
-    mode = int(sys.argv[1])
-    print(mode)
+# if(len(sys.argv) < 2):
+#     print("not enough arguments")
+#     exit()
+# else:
+#     mode = int(sys.argv[1])
+#     print(mode)
 
 dof = 0
 num_ctrl = 0
 startPath = ""
 savePath = ""
+
+mode = 1
 
 if(mode == 0):
     dof = 2
@@ -135,6 +137,8 @@ def main():
                           Line2D([0], [0], marker=markers[4], color='w', label='Interval=100',
                           markerfacecolor='k', markersize=markerSize),
                           Line2D([0], [0], marker=markers[5], color='w', label='Interval=200',
+                          markerfacecolor='k', markersize=markerSize),
+                          Line2D([0], [0], marker=markers[6], color='w', label='Interval=500',
                           markerfacecolor='k', markersize=markerSize)
                                                             ]
 
