@@ -16,8 +16,8 @@ class dynamicsGUI():
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
 
-        self.interpolationTypes = ["linear", "cubic"]
-        self.interpTypeNum = 0
+        self.interpolationTypes = ["linear", "iterativeLin", "quadratic", "cubic"]
+        self.interpTypeNum = 1
 
         self.darkBlue = '#103755'
         self.lightBlue = '#90CBCB'
@@ -30,10 +30,10 @@ class dynamicsGUI():
         self.plotFrame = tk.Frame(self.master)
         self.plotFrame.pack(side=TOP, fill=X)
 
-        self.AB_widgetsFrame = tk.Frame(self.master, bg=self.yellow)
+        self.AB_widgetsFrame = tk.Frame(self.master, bg=self.darkBlue)
         self.AB_widgetsFrame.pack(side=LEFT, fill=BOTH, expand=True)
 
-        self.state_widgetFrame = tk.Frame(self.master, bg=self.lightBlue)
+        self.state_widgetFrame = tk.Frame(self.master, bg=self.darkBlue)
         self.state_widgetFrame.pack(side=RIGHT, fill=BOTH, expand=True)
 
         self.totalGraphData = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -120,7 +120,7 @@ class dynamicsGUI():
 
         self.label_interpType = tk.Label(self.AB_widgetsFrame, text = "Interpolation type", width=settingsWidth)
         self.entry_interpType = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_interpType.insert(0, "linear")
+        self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
         self.button_interpType_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incInterpType_callback)
         self.button_interpType_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decInterpType_callback)
 
@@ -239,11 +239,13 @@ class dynamicsGUI():
         self.interpTypeNum = self.interpTypeNum + 1
         self.entry_interpType.delete(0, END)
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
+        self.updatePlot()
 
     def decInterpType_callback(self):
         self.interpTypeNum = self.interpTypeNum - 1
         self.entry_interpType.delete(0, END)
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
+        self.updatePlot()
 
     def displayMode_callback(self):
 
@@ -254,44 +256,54 @@ class dynamicsGUI():
 
         # if dyn params are the same, don't recompute
         if dynParams == self.dynParams:
-            print("same dyn params - no recomputation")
+            pass
         else:
             self.dynParams = dynParams
-            self.trueTrajec, self.interpolatedTrajec, self.reEvaluationIndices = self.interpolator.interpolateTrajectory(0, self.dynParams, self.interpTypeNum)
+            self.trueTrajec, self.interpolatedTrajec, self.errors, self.reEvaluationIndices, self.iterativeKeyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = int(self.entry_displayIndex.get())
-
-        #plotting colours
-        # orange = "#ffa600"
-        # groundTruthColor = "#0057c9"
-        # interpolatedColor = "#ff8400"
-        # graphBackground = "#d6d6d6"
 
         dynamicColor = "#EEF30D"
         baselineColor = "#000000"
 
         highlightedIndices = np.copy(self.trueTrajec[self.reEvaluationIndices, ])
+        highlightedIndicesIterative = np.copy(self.trueTrajec[self.iterativeKeyPoints, ])
         self.numEvals = len(self.reEvaluationIndices)
-
-        #print the shape of the interpolated trajectory
-        try:
-            print(self.interpolatedTrajec.shape)
-        except:
-            print("no interpolated trajectory")
 
         self.plot_AB.clear()
 
         self.plot_AB.plot(self.trueTrajec[:,index], color = baselineColor, label='Ground truth')
-        self.plot_AB.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=10, color = dynamicColor, zorder=10)
-        self.plot_AB.plot(self.interpolatedTrajec[:,index], color = dynamicColor, label = 'Interpolated')
+
+        if(self.interpTypeNum == 1):
+            self.plot_AB.scatter(self.iterativeKeyPoints, highlightedIndicesIterative[:, index], s=10, color = dynamicColor, zorder=10)
+        else:
+            self.plot_AB.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=10, color = dynamicColor, zorder=10)
+
+        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = dynamicColor, label = 'Interpolated')
         self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
-        at = AnchoredText(str(self.numEvals),
-                  prop=dict(size=15), frameon=True, loc='lower right')
+
+        evalsString = ""
+        if(self.interpTypeNum == 1):
+            evalsString = "Evals: " + str(len(self.iterativeKeyPoints))
+
+        else:
+            evalsString = "Evals: " + str(self.numEvals)
+
+        at = AnchoredText(evalsString,
+                    prop=dict(size=15), frameon=True, loc='lower right')
         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
         self.plot_AB.add_artist(at)
+
+
+        at2 = AnchoredText("Error: " + str(round(self.errors[self.interpTypeNum], 2)) + "",
+                       loc='lower left', prop=dict(size=8), frameon=True,
+                       bbox_to_anchor=(0., 1.),
+                       bbox_transform=self.plot_AB.transAxes
+                       )
+        at2.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        self.plot_AB.add_artist(at2)
         self.canvas_AB.draw()
-    
 
     def returnDynParams(self):
         minN = int(self.entry_minN.get())
