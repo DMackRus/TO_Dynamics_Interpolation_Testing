@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.signal import butter,filtfilt
 
 
 numTrajectoriesTest = 1
@@ -27,6 +29,7 @@ class interpolator():
             exit()
 
         self.dof = dof
+        self.task = task
         self.num_ctrl = num_ctrl
         self.numStates = self.dof * 2
         self.sizeOfAMatrix = self.numStates * self.numStates
@@ -59,6 +62,23 @@ class interpolator():
 
         print("DATA LOADED")
 
+        if(task == 2):
+            T = 5.0         # Sample Period
+            fs = 100.0       # sample rate, Hz
+            cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
+            nyq = 0.5 * fs  # Nyquist Frequency
+            order = 2       # sin wave can be approx represented as quadratic
+            n = int(T * fs) # total number of samples
+
+            self.filteredTrajectory = self.testTrajectories[0].copy()
+
+            for i in range(len(self.testTrajectories[0][0])):
+                
+                self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories[0][:,i].copy(), cutoff, nyq, order)
+
+        else:
+            self.filteredTrajectory = self.testTrajectories[0].copy()
+
         self.dynParams = []
         self.error_dynLin = []
         self.evals_dynLin = []
@@ -70,13 +90,13 @@ class interpolator():
         rawTrajec = self.testTrajectories[trajecNumber]
 
         self.dynParams = dynParams
-        #jerkProfile = self.calculateJerkOverTrajectory()
 
         reEvaluationIndices = self.createEvaluationPoints(self.states[0].copy(), self.controls[0].copy(), self.dynParams.copy())
         numEvals = len(reEvaluationIndices)
-        print("num evals: " + str(numEvals))
 
-        iterativeKeyPoints = self.generateIterativeLinInterpolation(rawTrajec)
+        iterativeKeyPoints = self.generateKeypointsIteratively(rawTrajec)
+        print("num evals: " + str(numEvals))
+        print("num evals iterative: " + str(len(iterativeKeyPoints)))
         print("evals: ")
         print(reEvaluationIndices)
         print("iterative key points: ")
@@ -85,7 +105,6 @@ class interpolator():
         linInterpTrajectory = self.generateLinInterpolation(rawTrajec, reEvaluationIndices.copy())
         quadInterpTrajectory = self.generateQuadInterpolation(rawTrajec, reEvaluationIndices.copy())
         cubicInterpTrajectory = self.generateCubicInterpolation(rawTrajec, reEvaluationIndices.copy())
-        #print(reEvaluationIndicies)
 
         #store lininterp and quadratic interp into interpolateTrajectory
         interpolatedTrajectory = np.zeros((4, self.trajecLength, len(rawTrajec[0])))
@@ -95,16 +114,20 @@ class interpolator():
         interpolatedTrajectory[2,:,:] = quadInterpTrajectory.copy()
         interpolatedTrajectory[3,:,:] = cubicInterpTrajectory.copy()
         
+        if(self.task == 2):
+            errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, linInterpTrajectory)
+            errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeLinInterpTrajectory)
+            errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, quadInterpTrajectory)
+            errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, cubicInterpTrajectory)
+        else:
+            errors[0] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, linInterpTrajectory)
+            errors[1] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, iterativeLinInterpTrajectory)
+            errors[2] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, quadInterpTrajectory)
+            errors[3] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, cubicInterpTrajectory)
 
-        errors[0] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, linInterpTrajectory)
-        errors[1] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, quadInterpTrajectory)
-        errors[2] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, cubicInterpTrajectory)
-        errors[3] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, iterativeLinInterpTrajectory)
-
-        return rawTrajec, interpolatedTrajectory, errors, reEvaluationIndices, iterativeKeyPoints
+        return self.filteredTrajectory, interpolatedTrajectory, rawTrajec, errors, reEvaluationIndices, iterativeKeyPoints
     
     def calcMeanSumSquaredDiffForTrajec(self, groundTruth, prediction):
-        size = len(groundTruth[0])
 
         array1Size = len(groundTruth)
         array2Size = len(prediction)
@@ -113,35 +136,29 @@ class interpolator():
         if(array1Size < array2Size):
             lenofTrajec = array1Size
         
-        SqDiff = np.zeros((lenofTrajec, size))
-        meanSqDiff = np.zeros((size))
+        meanSqDiff = np.zeros((lenofTrajec))
 
 
         for i in range(lenofTrajec):
+            meanSqDiff[i] = self.sumsqDiffBetweenAMatrices(groundTruth[i], prediction[i])
             
-            for j in range(size):
+            # for j in range(size):
 
-                diffVals = abs((groundTruth[i, j] - prediction[i, j]))
-                SqDiff[i, j] = diffVals
-                # if(diffVals < 10):
-                    
-                    
-                # else:
-                #     SqDiff[i, j] = 0
-                #     print("oopsie big diff: " + str(diffVals))
+                # diffVals = abs((groundTruth[i, j] - prediction[i, j]))
+                # SqDiff[i, j] = diffVals
 
-        for j in range(size):
-            # stddev = np.std(SqDiff[:,j])
-            # mean = np.mean(SqDiff[:,j])
+        # for j in range(size):
+        #     # stddev = np.std(SqDiff[:,j])
+        #     # mean = np.mean(SqDiff[:,j])
 
-            # ok = SqDiff[:,j] > (mean - (3 * stddev))
-            # SqDiff[~ok,j] = mean
+        #     # ok = SqDiff[:,j] > (mean - (3 * stddev))
+        #     # SqDiff[~ok,j] = mean
 
-            # #step 2, values higher than 1 std from mean
-            # # ok = SqDiff[:,j] < (mean + ( 3 * stddev))
-            # # SqDiff[~ok,j] = mean
+        #     # #step 2, values higher than 1 std from mean
+        #     # # ok = SqDiff[:,j] < (mean + ( 3 * stddev))
+        #     # # SqDiff[~ok,j] = mean
 
-            meanSqDiff[j] = np.sum(SqDiff[:,j])
+        #     meanSqDiff[j] = np.sum(SqDiff[:,j])
 
         #print("sum squared diff matrices: " + str(sumSqDiff))
         meanSumSquared = np.sum(meanSqDiff)
@@ -151,14 +168,26 @@ class interpolator():
     def returnTrajecInformation(self):
 
         self.jerkProfile = self.calcJerkOverTrajectory(self.states[0])
+        self.accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
 
 
-        return self.jerkProfile, self.states[0].copy(), self.controls[0].copy()
+        return self.jerkProfile, self.accelProfile, self.states[0].copy(), self.controls[0].copy()
 
+    def calculateAccellerationOverTrajectory(self, trajectoryStates):
+        accel = np.zeros((self.trajecLength - 1, self.numStates))
 
+        for i in range(self.trajecLength - 1):
+
+            state1 = trajectoryStates[i,:].copy()
+            state2 = trajectoryStates[i+1,:].copy()
+
+            currentAccel = state2 - state1
+
+            accel[i,:] = currentAccel
+
+        return accel
 
     def calcJerkOverTrajectory(self, trajectoryStates):
-        print("trajectory states shape: " + str(trajectoryStates.shape))
         jerk = np.zeros((self.trajecLength - 2, self.numStates))
 
         for i in range(self.trajecLength - 2):
@@ -251,7 +280,7 @@ class interpolator():
             
         return newEvalNeeded
     
-    def generateIterativeLinInterpolation(self, A_matrices):
+    def generateKeypointsIteratively(self, A_matrices):
         evalPoints = []
 
         startInterval = int(self.trajecLength / 2)
@@ -322,7 +351,7 @@ class interpolator():
 
         sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
 
-        if(sumsqDiff < 0.1):
+        if(sumsqDiff < 0.05):
             approximationGood = True
 
         return approximationGood, midIndex
@@ -331,7 +360,12 @@ class interpolator():
         sumsqDiff = 0
 
         for i in range(len(matrix1)):
-            sumsqDiff = sumsqDiff + (matrix1[i] - matrix2[i])**2
+            sqDiff = (matrix1[i] - matrix2[i])**2
+            if(sqDiff > 0.01):
+                #ignore large values
+                sqDiff = 0
+
+            sumsqDiff = sumsqDiff + sqDiff
 
         return sumsqDiff
 
@@ -478,5 +512,30 @@ class interpolator():
         quadInterpolationData[len(quadInterpolationData) - 1,:] = quadInterpolationData[len(quadInterpolationData) - 2,:]
 
         return quadInterpolationData
+    
+    def butter_lowpass_filter(self, data, cutoff, nyq, order):
+        normal_cutoff = cutoff / nyq
+        # Get the filter coefficients 
+        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        y = filtfilt(b, a, data)
+        return y
 
+if __name__ == "__main__":
+    myInterp = interpolator(0, 2, 3000)
+
+    # Filter requirements.
+    T = 5.0         # Sample Period
+    fs = 100      # sample rate, Hz
+    cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
+    nyq = 0.5 * fs  # Nyquist Frequency
+    order = 2       # sin wave can be approx represented as quadratic
+    n = int(T * fs) # total number of samples
+
+    index = 3
+
+    filteredData = myInterp.butter_lowpass_filter(myInterp.testTrajectories[0][:,index], cutoff, fs, order)
+
+    plt.plot(myInterp.testTrajectories[0][:,index])
+    plt.plot(filteredData)
+    plt.show()
 

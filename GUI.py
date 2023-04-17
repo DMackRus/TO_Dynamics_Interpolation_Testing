@@ -18,15 +18,31 @@ class dynamicsGUI():
 
         self.interpolationTypes = ["linear", "iterativeLin", "quadratic", "cubic"]
         self.interpTypeNum = 1
+        self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
+        self.stateDisplayNumber = 0
+        self.stateDisplayDof = 0
 
         self.darkBlue = '#103755'
         self.lightBlue = '#90CBCB'
         self.teal = '#59CBCB'
         self.yellow = '#EEF30D'
         self.white = '#FFFFFF'
+        self.black = '#000000'
 
         self.numEvals = 0
 
+        self.setupGUI()
+
+        self.taskNumber = 2
+
+        self.interpolator = interpolator(0, self.taskNumber, 3000)
+        self.numDOFs = self.interpolator.dof
+        self.dynParams = []
+        self.trajectoryNumber = 0
+
+        self.updatePlot_trajecInfo()
+
+    def setupGUI(self):
         self.plotFrame = tk.Frame(self.master)
         self.plotFrame.pack(side=TOP, fill=X)
 
@@ -36,7 +52,10 @@ class dynamicsGUI():
         self.state_widgetFrame = tk.Frame(self.master, bg=self.darkBlue)
         self.state_widgetFrame.pack(side=RIGHT, fill=BOTH, expand=True)
 
-        self.totalGraphData = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.setupPlots()
+        self.setupButtons()
+
+    def setupPlots(self):
 
         # the figure that will contain the plot
         self.fig_AB = plt.Figure(figsize = (7, 5),
@@ -63,10 +82,6 @@ class dynamicsGUI():
                   prop=dict(size=15), frameon=True, loc='lower right')
         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
         self.plot_AB.add_artist(at)
-    
-        # plotting the graph
-        self.plot_AB.plot(self.totalGraphData)
-        self.plot_trajecInfo.plot(self.totalGraphData)
         
         # creating the Tkinter canvas
         # containing the Matplotlib figure
@@ -74,11 +89,11 @@ class dynamicsGUI():
                                 master = self.plotFrame) 
         
         self.canvas_trajecInfo = FigureCanvasTkAgg(self.fig_trajecInfo, master = self.plotFrame)
-  
+
         # placing the canvas on the Tkinter window
         self.canvas_AB.get_tk_widget().grid(row=0, column=0)
         self.canvas_trajecInfo.get_tk_widget().grid(row=0, column=1)
-    
+
         # # creating the Matplotlib toolbar
         # toolbar = NavigationToolbar2Tk(self.canvas,
         #                             self.master)
@@ -90,8 +105,10 @@ class dynamicsGUI():
         # frame = Frame(self.master, bg='#f25252')
         # frame.pack(expand=True)
 
+    def setupButtons(self):
         settingsWidth = 10
 
+        # ------ A/B matrix widgets ------
         self.label_minN = tk.Label(self.AB_widgetsFrame, text="minN", width=settingsWidth)
         self.entry_minN = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_minN.insert(0, "5")
@@ -156,40 +173,34 @@ class dynamicsGUI():
         self.entry_interpType.grid(row=2, column=4)
         self.button_interpType_inc.grid(row=2, column=5)
 
+        # ------ state widgets ------
         #label for state type
         self.label_stateType = tk.Label(self.state_widgetFrame, text="state type", width=settingsWidth)
-        #entry box for state type
-        self.stateTypes = ["Jerk", "Acceleration", "Velocity", "Position"]
+        self.entry_stateType = tk.Entry(self.state_widgetFrame, width=settingsWidth)
+        self.entry_stateType.insert(0, self.stateTypes[self.stateDisplayNumber])
+        self.button_stateType_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incStateType_callback)
+        self.button_stateType_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decStateType_callback)
+        
+        self.label_dofIndex = tk.Label(self.state_widgetFrame, text="dof index", width=settingsWidth)
+        self.entry_dofIndex = tk.Entry(self.state_widgetFrame, width=settingsWidth)
+        self.entry_dofIndex.insert(0, "0")
+        self.button_dofIndex_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incDofIndex_callback)
+        self.button_dofIndex_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decDofIndex_callback)
+
 
         # make a list box with my state types
         #self.listbox_stateType = tk.Listbox(self.state_widgetFrame, width=settingsWidth)
-
-        self.entry_stateIndex = tk.Entry(self.state_widgetFrame, width=settingsWidth)
-        self.entry_stateIndex.insert(0, "0")
-
-        self.button_drawTrajecInfo = tk.Button(self.state_widgetFrame, text="draw trajectory information", command = self.drawTrajecInfo, width=settingsWidth)
         
-        self.label_stateType.pack(side=TOP)
-        #self.listbox_stateType.pack(side=TOP)
-        self.entry_stateIndex.pack(side=TOP)
-        
-        self.button_drawTrajecInfo.pack(side=TOP)
+        self.label_stateType.grid(row = 0, column = 0, columnspan = 3, sticky='EW')
+        self.button_stateType_dec.grid(row = 1, column = 0)
+        self.entry_stateType.grid(row = 1, column = 1)
+        self.button_stateType_inc.grid(row = 1, column = 2)
 
-        self.interpolator = interpolator(0, 1, 3000)
-        self.dynParams = []
-        self.trajectoryNumber = 0
+        self.label_dofIndex.grid(row = 2, column = 0, columnspan = 3, sticky='EW')
+        self.button_dofIndex_dec.grid(row = 3, column = 0)
+        self.entry_dofIndex.grid(row = 3, column = 1)
+        self.button_dofIndex_inc.grid(row = 3, column = 2)
 
-    def drawTrajecInfo(self):
-
-        jerkProfile, states, controls = self.interpolator.returnTrajecInformation()
-        index = int(self.entry_stateIndex.get())
-
-        self.plot_trajecInfo.clear()
-        self.plot_trajecInfo.plot(states[:,index], label='Ground truth')
-        #self.plot_trajecInfo.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=25, color = interpolatedColor)
-        #self.plot_trajecInfo.plot(self.interpolatedTrajec[:,index], color = interpolatedColor, label = 'Interpolated')
-        self.plot_trajecInfo.set_title('trajec Info', fontsize=15, color= self.white, fontweight='bold')
-        self.canvas_trajecInfo.draw()
 
     def incMinN_callback(self):
         val = int(self.entry_minN.get())
@@ -247,9 +258,75 @@ class dynamicsGUI():
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
         self.updatePlot()
 
+    def incStateType_callback(self):
+        self.stateDisplayNumber = self.stateDisplayNumber + 1
+        if(self.stateDisplayNumber > len(self.stateTypes) - 1):
+            self.stateDisplayNumber = len(self.stateTypes) - 1
+        
+        self.entry_stateType.delete(0, END)
+        self.entry_stateType.insert(0, self.stateTypes[self.stateDisplayNumber])
+
+        self.updatePlot_trajecInfo()
+
+    def decStateType_callback(self):
+        self.stateDisplayNumber = self.stateDisplayNumber - 1
+        if(self.stateDisplayNumber < 0):
+            self.stateDisplayNumber = 0
+        self.entry_stateType.delete(0, END)
+        self.entry_stateType.insert(0, self.stateTypes[self.stateDisplayNumber])
+
+        self.updatePlot_trajecInfo()
+
+    def incDofIndex_callback(self):
+        self.stateDisplayDof = self.stateDisplayDof + 1
+        if(self.stateDisplayDof > self.numDOFs - 1):
+            self.stateDisplayDof = self.numDOFs - 1
+
+        self.entry_dofIndex.delete(0, END)
+        self.entry_dofIndex.insert(0, self.stateDisplayDof)
+
+        self.updatePlot_trajecInfo()
+
+    def decDofIndex_callback(self):
+        self.stateDisplayDof = self.stateDisplayDof - 1
+        if(self.stateDisplayDof < 0):
+            self.stateDisplayDof = 0
+
+        self.entry_dofIndex.delete(0, END)
+        self.entry_dofIndex.insert(0, self.stateDisplayDof)
+
+        self.updatePlot_trajecInfo()
+
     def displayMode_callback(self):
 
         self.updatePlot()
+
+    def updatePlot_trajecInfo(self):
+
+        jerkProfile, accelProfile, states, controls = self.interpolator.returnTrajecInformation()
+
+        self.plot_trajecInfo.clear()
+        displayDof = int(self.entry_dofIndex.get())
+
+        #Position
+        if(self.stateDisplayNumber == 0):
+            self.plot_trajecInfo.plot(states[:,displayDof], label='Position', color = self.black)
+        #Velocity
+        elif(self.stateDisplayNumber == 1):
+            self.plot_trajecInfo.plot(states[:,displayDof+self.numDOFs], label='Velocity', color = self.black)
+        #Acceleration
+        elif(self.stateDisplayNumber == 2):
+            self.plot_trajecInfo.plot(accelProfile[:,displayDof+self.numDOFs], label='Acceleration', color = self.black)
+        #Jerk
+        elif(self.stateDisplayNumber == 3):
+            self.plot_trajecInfo.plot(jerkProfile[:,displayDof+self.numDOFs], label='Jerk', color = self.black)
+        #Control
+        elif(self.stateDisplayNumber == 4):
+            self.plot_trajecInfo.plot(controls[:,displayDof], label='Control', color = self.black)
+        
+        self.plot_trajecInfo.legend()
+        self.plot_trajecInfo.set_title('trajec Info', fontsize=15, color= self.white, fontweight='bold')
+        self.canvas_trajecInfo.draw()
 
     def updatePlot(self):
         dynParams = self.returnDynParams()
@@ -259,27 +336,25 @@ class dynamicsGUI():
             pass
         else:
             self.dynParams = dynParams
-            self.trueTrajec, self.interpolatedTrajec, self.errors, self.reEvaluationIndices, self.iterativeKeyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
+            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.reEvaluationIndices, self.iterativeKeyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = int(self.entry_displayIndex.get())
 
-        dynamicColor = "#EEF30D"
-        baselineColor = "#000000"
-
-        highlightedIndices = np.copy(self.trueTrajec[self.reEvaluationIndices, ])
-        highlightedIndicesIterative = np.copy(self.trueTrajec[self.iterativeKeyPoints, ])
+        highlightedIndices = np.copy(self.unfilteredTrajec[self.reEvaluationIndices, ])
+        highlightedIndicesIterative = np.copy(self.unfilteredTrajec[self.iterativeKeyPoints, ])
         self.numEvals = len(self.reEvaluationIndices)
 
         self.plot_AB.clear()
 
-        self.plot_AB.plot(self.trueTrajec[:,index], color = baselineColor, label='Ground truth')
+        self.plot_AB.plot(self.trueTrajec[:,index], color = self.black, label='Ground truth')
+        self.plot_AB.plot(self.unfilteredTrajec[:,index], color = 'orange', label='Unfiltered')
 
         if(self.interpTypeNum == 1):
-            self.plot_AB.scatter(self.iterativeKeyPoints, highlightedIndicesIterative[:, index], s=10, color = dynamicColor, zorder=10)
+            self.plot_AB.scatter(self.iterativeKeyPoints, highlightedIndicesIterative[:, index], s=10, color = self.yellow, zorder=10)
         else:
-            self.plot_AB.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=10, color = dynamicColor, zorder=10)
+            self.plot_AB.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
 
-        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = dynamicColor, label = 'Interpolated')
+        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = self.yellow, label = 'Interpolated')
         self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
 
