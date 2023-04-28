@@ -3,26 +3,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import butter,filtfilt
 
-
 numTrajectoriesTest = 1
+
 class interpolator():
-    def __init__(self, trajecNumber, task, trajecLength):
+    def __init__(self, trajecNumber, task):
 
         startPath = ""
 
         if(task == 0):
             dof = 2
             num_ctrl = 2
-            startPath = "Pendulum/"
+            startPath = "savedTrajecInfo/doublePendulum/"
         elif(task == 1):
             dof = 7
             num_ctrl = 7
-            startPath = "Reaching/"
+            startPath = "savedTrajecInfo/panda_reaching/"
 
         elif(task == 2):
             dof = 9
             num_ctrl = 7
-            startPath = "Pushing/"
+            startPath = "savedTrajecInfo/panda_pushing/"
 
         else:
             print("invalid mode specified")
@@ -33,9 +33,12 @@ class interpolator():
         self.num_ctrl = num_ctrl
         self.numStates = self.dof * 2
         self.sizeOfAMatrix = self.numStates * self.numStates
-        self.trajecLength = trajecLength
-
-        pandas = pd.read_csv(startPath + 'testing_data/testing_trajectories.csv', header=None)
+        
+        pandas = pd.read_csv(startPath + '0/A_matrices.csv', header=None)
+        pandas = pandas[pandas.columns[:-1]]
+        rows, cols = pandas.shape
+        self.trajecLength = rows 
+        print("trajec length " + str(self.trajecLength))
 
         self.testTrajectories = []
         self.states = []
@@ -43,21 +46,23 @@ class interpolator():
 
         for i in range(numTrajectoriesTest):
             self.testTrajectories.append([])
-            tempPandas = pandas.iloc[i*trajecLength:(i + 1)*trajecLength]
+            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.testTrajectories[i] = tempPandas.to_numpy()
-    
-        pandas = pd.read_csv(startPath + 'testing_data/testing_states.csv', header=None)
+        print(self.testTrajectories[0][0])
+        pandas = pd.read_csv(startPath + '0/states.csv', header=None)
+        pandas = pandas[pandas.columns[:-1]]
 
         for i in range(numTrajectoriesTest):
             self.states.append([])
-            tempPandas = pandas.iloc[i*trajecLength:(i + 1)*trajecLength]
+            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.states[i] = tempPandas.to_numpy()
-
-        pandas = pd.read_csv(startPath + 'testing_data/testing_controls.csv', header=None)
+        print(self.states[0][0])
+        pandas = pd.read_csv(startPath + '0/controls.csv', header=None)
+        pandas = pandas[pandas.columns[:-1]]
 
         for i in range(numTrajectoriesTest):
             self.controls.append([])
-            tempPandas = pandas.iloc[i*trajecLength:(i + 1)*trajecLength]
+            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.controls[i] = tempPandas.to_numpy()
 
         print("DATA LOADED")
@@ -167,6 +172,7 @@ class interpolator():
     
     def returnTrajecInformation(self):
 
+        print(self.states[0].shape)
         self.jerkProfile = self.calcJerkOverTrajectory(self.states[0])
         self.accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
 
@@ -351,7 +357,9 @@ class interpolator():
 
         sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
 
-        if(sumsqDiff < 0.05):
+        # 0.05 for reaching and pushing
+        #~0.001 for pendulum
+        if(sumsqDiff < 0.001):
             approximationGood = True
 
         return approximationGood, midIndex
