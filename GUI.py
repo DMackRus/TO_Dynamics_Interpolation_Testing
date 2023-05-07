@@ -33,7 +33,7 @@ class dynamicsGUI():
 
         self.setupGUI()
 
-        self.taskNumber = 0
+        self.taskNumber = 2
 
         self.interpolator = interpolator(0, self.taskNumber)
         self.numDOFs = self.interpolator.dof

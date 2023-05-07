@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import butter,filtfilt
+import math
 
 numTrajectoriesTest = 1
 
@@ -33,8 +34,9 @@ class interpolator():
         self.num_ctrl = num_ctrl
         self.numStates = self.dof * 2
         self.sizeOfAMatrix = self.numStates * self.numStates
+        self.trajecNumber = 0
         
-        pandas = pd.read_csv(startPath + '0/A_matrices.csv', header=None)
+        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
         self.trajecLength = rows 
@@ -49,7 +51,7 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.testTrajectories[i] = tempPandas.to_numpy()
         print(self.testTrajectories[0][0])
-        pandas = pd.read_csv(startPath + '0/states.csv', header=None)
+        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
 
         for i in range(numTrajectoriesTest):
@@ -57,7 +59,7 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.states[i] = tempPandas.to_numpy()
         print(self.states[0][0])
-        pandas = pd.read_csv(startPath + '0/controls.csv', header=None)
+        pandas = pd.read_csv(startPath + str(self.trajecNumber) +  '/controls.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
 
         for i in range(numTrajectoriesTest):
@@ -355,11 +357,13 @@ class interpolator():
         diff = endVals - startVals
         linInterpMidVals = startVals + (diff/2)
 
-        sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
+        sumsqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
+        # sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
+        print("sumSqDiff: " + str(sumsqDiff))
 
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
-        if(sumsqDiff < 0.001):
+        if(sumsqDiff < 0.0002):
             approximationGood = True
 
         return approximationGood, midIndex
@@ -374,6 +378,35 @@ class interpolator():
                 sqDiff = 0
 
             sumsqDiff = sumsqDiff + sqDiff
+
+        return sumsqDiff
+
+    def meansqDiffBetweenAMatrices(self, matrix1, matrix2):
+        sumsqDiff = 0
+        counter = 0
+        counterSmallVals = 0
+
+        for i in range(len(matrix1)):
+            sqDiff = (matrix1[i] - matrix2[i])**2
+            if(sqDiff < 0.000001):
+                #ignore large values
+                sqDiff = 0
+                counterSmallVals += 1
+            elif(sqDiff > 0.5):
+                sqDiff = 0
+            else:
+                counter = counter + 1
+
+            sumsqDiff = sumsqDiff + sqDiff
+
+        if(counter == 0):
+            sumsqDiff = 0
+        else:
+            sumsqDiff = sumsqDiff / counter
+            
+        print("counter: " + str(counter))
+        print("counter small vals: " + str(counterSmallVals))
+        
 
         return sumsqDiff
 
@@ -528,8 +561,32 @@ class interpolator():
         y = filtfilt(b, a, data)
         return y
 
+def testFilter():
+    pass
+
+def filterArray(unfiltered):
+    PI = 3.1415
+    yn1 = unfiltered[0]
+    xn1 = unfiltered[0]
+
+    filtered = []
+
+    for i in range(len(unfiltered)):
+
+        xn = unfiltered[i]
+        yn = 0.2283*yn1 + 0.3859*xn + 0.3859*xn1
+
+        xn1 = xn
+        yn1 = yn
+
+        filtered.append(yn)
+
+    plt.plot(filtered)
+    plt.plot(unfiltered)
+    plt.show()
+
 if __name__ == "__main__":
-    myInterp = interpolator(0, 2, 3000)
+    myInterp = interpolator(0, 2)
 
     # Filter requirements.
     T = 5.0         # Sample Period
@@ -539,11 +596,17 @@ if __name__ == "__main__":
     order = 2       # sin wave can be approx represented as quadratic
     n = int(T * fs) # total number of samples
 
-    index = 3
+    index = 1
+    for i in range(10):
+        filterArray(myInterp.testTrajectories[0][:,index + i])
 
-    filteredData = myInterp.butter_lowpass_filter(myInterp.testTrajectories[0][:,index], cutoff, fs, order)
+    # filterArray(myInterp.testTrajectories[0][:,index])
 
-    plt.plot(myInterp.testTrajectories[0][:,index])
-    plt.plot(filteredData)
-    plt.show()
+    # filteredData = myInterp.butter_lowpass_filter(myInterp.testTrajectories[0][:,index], cutoff, fs, order)
+
+    # plt.plot(myInterp.testTrajectories[0][:,index])
+    # plt.plot(filteredData)
+    # plt.show()
+
+
 
