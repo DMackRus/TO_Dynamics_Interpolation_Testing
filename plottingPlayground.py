@@ -151,8 +151,11 @@ def makeFilter():
 
 def plotResults():
     # Load data into numpy array
+    taskName = "panda_pushing_clutter"
+    # taskName = "panda_pushing"
+    # taskName = "doublePendulum"
 
-    data = np.array([genfromtxt('data/resultsData/panda_pushing_clutter_testingData.csv', delimiter = ',')])
+    data = np.array([genfromtxt('data/resultsData/' + taskName + '_testingData.csv', delimiter = ',')])
 
     file = open("data/resultsData/panda_pushing_clutter_testingData.csv", "r")
     headers = list(csv.reader(file, delimiter=","))
@@ -205,7 +208,7 @@ def plotResults():
     yAxisLabel = "Average time getting derivatives (s)"
     orange = "#edb83b"
     bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1,1], labels)
-    fig.suptitle('Panda_pushing_clutter', fontsize=16)
+    fig.suptitle(taskName, fontsize=16)
     plt.show()
 
 def box_plot(data, fill_color, yAxisTitle, ax, labels):
@@ -264,6 +267,25 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels):
         
     return bp
 
+def K_matrices():
+    #Load some data into numpy array
+    K_normal = np.array([genfromtxt('K_data/K_normal.csv', delimiter = ',')])
+    K_parallel = np.array([genfromtxt('K_data/K_parallel.csv', delimiter = ',')])
+
+    K_normal = K_normal[0]
+    K_parallel = K_parallel[0]
+
+    index = 20
+    for i in range(100):
+
+        index += 1
+        plt.plot(K_normal[:, index], label = "Normal")
+        plt.plot(K_parallel[:, index], label = "Parallel")
+        plt.legend()
+        plt.show()
+
+    
+
 
 if __name__ == "__main__":
-    plotResults()
+    K_matrices()
