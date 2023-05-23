@@ -24,6 +24,10 @@ class interpolator():
             dof = 9
             num_ctrl = 7
             startPath = "savedTrajecInfo/panda_pushing/"
+        elif(task == 3):
+            dof = 13
+            num_ctrl = 7
+            startPath = "savedTrajecInfo/panda_pushing_clutter/"
 
         else:
             print("invalid mode specified")
@@ -357,13 +361,13 @@ class interpolator():
         diff = endVals - startVals
         linInterpMidVals = startVals + (diff/2)
 
-        sumsqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
+        meanSqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
         # sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
-        print("sumSqDiff: " + str(sumsqDiff))
+        print("meanSqDiff: " + str(meanSqDiff))
 
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
-        if(sumsqDiff < 0.0002):
+        if(meanSqDiff < 0.002):
             approximationGood = True
 
         return approximationGood, midIndex
@@ -585,20 +589,55 @@ def filterArray(unfiltered):
     plt.plot(unfiltered)
     plt.show()
 
+def ICRATemp():
+    myInterp = interpolator(1, 1)
+
+    dynParams = [5, 200, 0.0005]
+
+    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, reEvaluationIndices, iterativeKeyPoints = myInterp.interpolateTrajectory(0, dynParams)
+            
+
+    index = 13
+
+    highlightedIndices = np.copy(unfilteredTrajec[reEvaluationIndices, ])
+    highlightedIndicesIterative = np.copy(unfilteredTrajec[iterativeKeyPoints, ])
+    numEvals = len(reEvaluationIndices)
+
+    yellow = '#EEF30D'
+    black = '#000000'
+    darkBlue = '#103755'
+
+    plt.figure(figsize=(5,3))
+    plt.plot(trueTrajec[:,index], color = darkBlue, label='Ground truth', linewidth=3)
+    # plt.plot(interpolatedTrajec[0,:,index], color = yellow, label='interpolated')
+    # plt.scatter(reEvaluationIndices, highlightedIndices[:, index], s=10, color = yellow, zorder=10)
+    plt.plot(interpolatedTrajec[1,:,index], color = yellow, label='interpolated', linewidth=1, alpha = 1)
+    plt.scatter(iterativeKeyPoints, highlightedIndicesIterative[:, index], s=10, color = yellow, alpha = 1, zorder=10)
+    # plt.legend()
+    # turn off y axis
+    plt.gca().axes.get_yaxis().set_visible(False)
+    # save as svg
+    plt.savefig('test.svg', format='svg', dpi=1200)
+    plt.show()
+
+    index += 1
+
 if __name__ == "__main__":
-    myInterp = interpolator(0, 2)
+    ICRATemp()
 
-    # Filter requirements.
-    T = 5.0         # Sample Period
-    fs = 100      # sample rate, Hz
-    cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
-    nyq = 0.5 * fs  # Nyquist Frequency
-    order = 2       # sin wave can be approx represented as quadratic
-    n = int(T * fs) # total number of samples
+    # myInterp = interpolator(0, 2)
 
-    index = 1
-    for i in range(10):
-        filterArray(myInterp.testTrajectories[0][:,index + i])
+    # # Filter requirements.
+    # T = 5.0         # Sample Period
+    # fs = 100      # sample rate, Hz
+    # cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
+    # nyq = 0.5 * fs  # Nyquist Frequency
+    # order = 2       # sin wave can be approx represented as quadratic
+    # n = int(T * fs) # total number of samples
+
+    # index = 1
+    # for i in range(10):
+    #     filterArray(myInterp.testTrajectories[0][:,index + i])
 
     # filterArray(myInterp.testTrajectories[0][:,index])
 

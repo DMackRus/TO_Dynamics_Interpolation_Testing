@@ -33,7 +33,7 @@ class dynamicsGUI():
 
         self.setupGUI()
 
-        self.taskNumber = 2
+        self.taskNumber = 1
 
         self.interpolator = interpolator(0, self.taskNumber)
         self.numDOFs = self.interpolator.dof
@@ -373,7 +373,7 @@ class dynamicsGUI():
 
         at2 = AnchoredText("Error: " + str(round(self.errors[self.interpTypeNum], 2)) + "",
                        loc='lower left', prop=dict(size=8), frameon=True,
-                       bbox_to_anchor=(0., 1.),
+                       bbox_to_anchor=(0., 1.05),
                        bbox_transform=self.plot_AB.transAxes
                        )
         at2.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")

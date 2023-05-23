@@ -149,15 +149,69 @@ def makeFilter():
     print("Filter coefficients b_i: " + str(b))
     print("Filter coefficients a_i: " + str(a[1:]))
 
-def plotResults():
-    # Load data into numpy array
-    taskName = "panda_pushing_clutter"
-    # taskName = "panda_pushing"
-    # taskName = "doublePendulum"
+# def plotResults():
+#     # Load data into numpy array
+#     taskName = "panda_pushing_clutter"
+#     # taskName = "panda_pushing"
+#     # taskName = "doublePendulum"
 
-    data = np.array([genfromtxt('data/resultsData/' + taskName + '_testingData.csv', delimiter = ',')])
+#     data = np.array([genfromtxt('data/resultsData/no_filtering/' + taskName + '_testingData.csv', delimiter = ',')])
 
-    file = open("data/resultsData/panda_pushing_clutter_testingData.csv", "r")
+#     file = open('data/resultsData/no_filtering/' + taskName + '_testingData.csv', "r")
+#     headers = list(csv.reader(file, delimiter=","))
+#     file.close()
+
+#     print(headers[0])
+#     lenHeaders = len(headers[0])
+#     labels = []
+#     for i in range(int(lenHeaders/4) - 1):
+#         labels.append(headers[0][i*4])
+
+
+#     print(labels)
+
+#     data = data[0]
+
+#     numTrajecs = len(data) - 2
+#     print("num trajecs: " + str(numTrajecs))
+
+#     optTimes = np.zeros((numTrajecs, 3))
+#     costReductions = np.zeros((numTrajecs, 3))
+#     avgNumDerivs = np.zeros((numTrajecs, 3))
+#     avgTimeGettingDerivs = np.zeros((numTrajecs, 3))
+
+#     for i in range(numTrajecs):
+#         for j in range(3):
+
+#             optTimes[i, j] = data[i + 2, (j * 4)]
+#             costReductions[i, j] = data[i + 2, (j * 4) + 1]
+#             avgNumDerivs[i, j] = data[i + 2, (j * 4) + 2]
+#             avgTimeGettingDerivs[i, j] = data[i + 2, (j * 4) + 3]
+
+    
+#     # fig, axes = plt.subplots(1, 1, figsize = (7,5))
+#     # boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
+#     # yAxisLabel = "Total optimisation time (s)"
+#     # orange = "#edb83b"
+#     # bp1 = box_plot(optTimes, orange, yAxisLabel, axes, labels)
+#     # plt.savefig('plot_times.svg', format='svg', dpi=1200, transparent = True)
+#     # plt.show()
+
+#     fig, axes = plt.subplots(1, 1, figsize = (7,5))
+#     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
+#     yAxisLabel = "Cost Reduction"
+#     orange = "#edb83b"
+#     bp1 = box_plot(costReductions, orange, yAxisLabel, axes, labels)
+#     plt.savefig('cost_reductions.svg', format='svg', dpi=1200, transparent = True)
+#     plt.show()
+
+def plotOneTask(taskName):
+
+    dataNumber = "1"
+
+    data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
+
+    file = open('data/resultsData/'  + dataNumber + "/" + taskName + '_testingData.csv', "r")
     headers = list(csv.reader(file, delimiter=","))
     file.close()
 
@@ -209,7 +263,21 @@ def plotResults():
     orange = "#edb83b"
     bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1,1], labels)
     fig.suptitle(taskName, fontsize=16)
-    plt.show()
+    plt.savefig('data/resultsData/'  + dataNumber + "/" + taskName + '_boxplots.svg', format='svg', dpi=1200)
+    # plt.show()
+
+
+def plotResults():
+    # Load data into numpy array
+
+    taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
+
+    for i in range(len(taskNames)):
+        plotOneTask(taskNames[i])
+    
+    # taskName = "doublePendulum"
+
+    
 
 def box_plot(data, fill_color, yAxisTitle, ax, labels):
     normalPosterColour = "#103755"
@@ -259,11 +327,13 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels):
     #ax = plt.gca()
     #ax.set_facecolor(backgroundColour)
 
-    ax.set(ylabel= yAxisTitle)
-    ax.set_title(yAxisTitle)
+    # Make this label bigger
+    # ax.set(ylabel= yAxisTitle)
+    ax.set_ylabel(yAxisTitle, fontsize=labelSize)
+    # ax.set_title(yAxisTitle)
 
     ax.set_xticks([1, 2, 3, 4])
-    ax.set_xticklabels(labels)
+    ax.set_xticklabels(labels, fontsize=labelSize)
         
     return bp
 
@@ -284,8 +354,42 @@ def K_matrices():
         plt.legend()
         plt.show()
 
+def costMatrices():
+    path = "cost_data/"
+
+    l_x = np.array([genfromtxt(path + 'l_x.csv', delimiter = ',')])
+    l_x = l_x[0]
+
+    l_x_fd = np.array([genfromtxt(path + 'l_x_fd.csv', delimiter = ',')])
+    l_x_fd = l_x_fd[0]
+
+    l_xx = np.array([genfromtxt(path + 'l_xx.csv', delimiter = ',')])
+    l_xx = l_xx[0]
+
+    # index = 8
+
+    # print(len(l_x[0]))
+
+    # for i in range(len(l_x[0]) - 1):
+    #     plt.plot(l_x[:, index], label = "l_x")
+    #     plt.plot(l_x_fd[:, index], label = "l_f_fd")
+    #     plt.legend()
+    #     plt.show()
+    #     index += 1
+
+    index = (9 * 2 * 9 * 2) - 1
+
+    print(len(l_xx[index]))
+
+    for i in range(len(l_x[0]) - 1):
+        plt.plot(l_xx[:, index], label = "l_xx")
+        plt.legend()
+        plt.show()
+        index += 1
+
+
     
 
 
 if __name__ == "__main__":
-    K_matrices()
+    plotResults()
