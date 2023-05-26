@@ -207,7 +207,7 @@ def makeFilter():
 
 def plotOneTask(taskName):
 
-    dataNumber = "1"
+    dataNumber = "2"
 
     data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
 
@@ -229,20 +229,20 @@ def plotOneTask(taskName):
     numTrajecs = len(data) - 2
     print("num trajecs: " + str(numTrajecs))
 
-    optTimes = np.zeros((numTrajecs, 4))
-    costReductions = np.zeros((numTrajecs, 4))
-    avgNumDerivs = np.zeros((numTrajecs, 4))
-    avgTimeGettingDerivs = np.zeros((numTrajecs, 4))
+    optTimes = np.zeros((numTrajecs, 5))
+    costReductions = np.zeros((numTrajecs, 5))
+    avgNumDerivs = np.zeros((numTrajecs, 5))
+    avgTimeGettingDerivs = np.zeros((numTrajecs, 5))
 
     for i in range(numTrajecs):
-        for j in range(4):
+        for j in range(5):
 
             optTimes[i, j] = data[i + 2, (j * 4)]
             costReductions[i, j] = data[i + 2, (j * 4) + 1]
             avgNumDerivs[i, j] = data[i + 2, (j * 4) + 2]
             avgTimeGettingDerivs[i, j] = data[i + 2, (j * 4) + 3]
 
-    fig, axes = plt.subplots(2, 2, figsize = (15,8))
+    fig, axes = plt.subplots(2, 2, figsize = (18,8))
     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Total optimisation time (s)"
     orange = "#edb83b"
@@ -263,7 +263,8 @@ def plotOneTask(taskName):
     orange = "#edb83b"
     bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1,1], labels)
     fig.suptitle(taskName, fontsize=16)
-    plt.savefig('data/resultsData/'  + dataNumber + "/" + taskName + '_boxplots.svg', format='svg', dpi=1200)
+    # plt.savefig('data/resultsData/'  + dataNumber + "/" + taskName + '_boxplots.svg', format='svg', dpi=1200)
+    plt.savefig('data/resultsData/' + dataNumber + "/" + taskName + '_boxplots.png')
     # plt.show()
 
 
@@ -332,8 +333,8 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels):
     ax.set_ylabel(yAxisTitle, fontsize=labelSize)
     # ax.set_title(yAxisTitle)
 
-    ax.set_xticks([1, 2, 3, 4])
-    ax.set_xticklabels(labels, fontsize=labelSize)
+    ax.set_xticks([1, 2, 3, 4, 5])
+    ax.set_xticklabels(labels, fontsize=11)
         
     return bp
 

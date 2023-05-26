@@ -1,0 +1,7 @@
+cost derivs analytically
+dynamics derivs: dqveldq
+filtering done - a = 0.2
+jerk method - 5, 100, 0.002 - robot joints, 0.002 - pushed object, 0.01 for all other objects
+iterative error -  < 0.000001, > 0.5, average error < 0.002
+backwards pass - parallel, each segment uses its l_xx and l_x to instantiate the value function
+
