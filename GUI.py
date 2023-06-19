@@ -16,8 +16,8 @@ class dynamicsGUI():
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
 
-        self.interpolationTypes = ["linear", "iterativeLin", "quadratic", "cubic"]
-        self.interpTypeNum = 1
+        self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error"]
+        self.interpTypeNum = 0
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
         self.stateDisplayNumber = 0
         self.stateDisplayDof = 0
@@ -118,9 +118,12 @@ class dynamicsGUI():
         self.label_jerkSensitivity = tk.Label(self.AB_widgetsFrame, text="jerkSensitivity", width=settingsWidth)
         self.entry_jerkSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_jerkSensitivity.insert(0, "0.002")
-        self.label_displayIndex = tk.Label(self.AB_widgetsFrame, text="displayIndex", width=settingsWidth)
-        self.entry_displayIndex = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_displayIndex.insert(0, "2")
+        self.label_displayIndexRow = tk.Label(self.AB_widgetsFrame, text="displayIndexRow", width=settingsWidth)
+        self.entry_displayIndexRow = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_displayIndexRow.insert(0, "0")
+        self.label_displayIndexCol = tk.Label(self.AB_widgetsFrame, text="displayIndexCol", width=settingsWidth)
+        self.entry_displayIndexCol = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_displayIndexCol.insert(0, "0")
         self.button_evaluate = tk.Button(self.AB_widgetsFrame, text="Evaluate", command=self.displayMode_callback)
 
         self.button_MinN_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incMinN_callback)
@@ -132,8 +135,10 @@ class dynamicsGUI():
         self.button_jerkSens_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incJerkSens_callback)
         self.button_jerkSens_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decJerkSens_callback)
 
-        self.button_displayIndex_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incdisplayIndex_callback)
-        self.button_displayIndex_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decdisplayIndex_callback)
+        self.button_displayIndexRow_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incdisplayIndexRow_callback)
+        self.button_displayIndexRow_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decdisplayIndexRow_callback)
+        self.button_displayIndexCol_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incdisplayIndexCol_callback)
+        self.button_displayIndexCol_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decdisplayIndexCol_callback)
 
         self.label_interpType = tk.Label(self.AB_widgetsFrame, text = "Interpolation type", width=settingsWidth)
         self.entry_interpType = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
@@ -159,19 +164,25 @@ class dynamicsGUI():
         self.entry_jerkSensitivity.grid(row=5, column=1)
         self.button_jerkSens_inc.grid(row=5, column=2)
 
-        self.label_displayIndex.grid(row=6, column=0, columnspan = 3, sticky='EW')
+        self.label_displayIndexRow.grid(row=0, column=4, columnspan = 3, sticky='EW')
 
-        self.button_displayIndex_dec.grid(row=7, column=0)
-        self.entry_displayIndex.grid(row=7, column=1)
-        self.button_displayIndex_inc.grid(row=7, column=2)
+        self.button_displayIndexRow_dec.grid(row=1, column=4)
+        self.entry_displayIndexRow.grid(row=1, column=5)
+        self.button_displayIndexRow_inc.grid(row=1, column=6)
 
-        self.button_evaluate.grid(row=0, column=3,columnspan = 3, sticky='EW')
+        self.label_displayIndexCol.grid(row=2, column=4, columnspan = 3, sticky='EW')
 
-        self.label_interpType.grid(row=1, column=3, columnspan = 3, sticky='EW')
+        self.button_displayIndexCol_dec.grid(row=3, column=4)
+        self.entry_displayIndexCol.grid(row=3, column=5)
+        self.button_displayIndexCol_inc.grid(row=3, column=6)
 
-        self.button_interpType_dec.grid(row=2, column=3)
-        self.entry_interpType.grid(row=2, column=4)
-        self.button_interpType_inc.grid(row=2, column=5)
+        self.button_evaluate.grid(row=0, column=7,columnspan = 3, sticky='EW')
+
+        self.label_interpType.grid(row=1, column=7, columnspan = 3, sticky='EW')
+
+        self.button_interpType_dec.grid(row=2, column=7)
+        self.entry_interpType.grid(row=2, column=8)
+        self.button_interpType_inc.grid(row=2, column=9)
 
         # ------ state widgets ------
         #label for state type
@@ -181,7 +192,7 @@ class dynamicsGUI():
         self.button_stateType_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incStateType_callback)
         self.button_stateType_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decStateType_callback)
         
-        self.label_dofIndex = tk.Label(self.state_widgetFrame, text="dof index", width=settingsWidth)
+        self.label_dofIndex = tk.Label(self.state_widgetFrame, text="dof row", width=settingsWidth)
         self.entry_dofIndex = tk.Entry(self.state_widgetFrame, width=settingsWidth)
         self.entry_dofIndex.insert(0, "0")
         self.button_dofIndex_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incDofIndex_callback)
@@ -201,6 +212,7 @@ class dynamicsGUI():
         self.entry_dofIndex.grid(row = 3, column = 1)
         self.button_dofIndex_inc.grid(row = 3, column = 2)
 
+    # ------ callback functions ------
 
     def incMinN_callback(self):
         val = int(self.entry_minN.get())
@@ -234,29 +246,53 @@ class dynamicsGUI():
         self.entry_jerkSensitivity.delete(0, END)
         self.entry_jerkSensitivity.insert(0, str(val-0.0001))
 
-    def incdisplayIndex_callback(self):
-        val = int(self.entry_displayIndex.get())
-        self.entry_displayIndex.delete(0, END)
-        self.entry_displayIndex.insert(0, val+1)
-        self.updatePlot()
+    def incdisplayIndexRow_callback(self):
+        val = int(self.entry_displayIndexRow.get())
+        if val > self.numDOFs - 1:
+            val = self.numDOFs - 1
+        self.entry_displayIndexRow.delete(0, END)
+        self.entry_displayIndexRow.insert(0, val+1)
+        self.updatePlot_derivatives()
     
-    def decdisplayIndex_callback(self):
-        val = int(self.entry_displayIndex.get())
-        self.entry_displayIndex.delete(0, END)
-        self.entry_displayIndex.insert(0, val-1)
-        self.updatePlot()
+    def decdisplayIndexRow_callback(self):
+        val = int(self.entry_displayIndexRow.get())
+        if val < 0:
+            val = 0
+        self.entry_displayIndexRow.delete(0, END)
+        self.entry_displayIndexRow.insert(0, val-1)
+        self.updatePlot_derivatives()
+
+    def incdisplayIndexCol_callback(self):
+        val = int(self.entry_displayIndexCol.get())
+        if val > self.numDOFs - 1:
+            val = self.numDOFs - 1
+        self.entry_displayIndexCol.delete(0, END)
+        self.entry_displayIndexCol.insert(0, val+1)
+        self.updatePlot_derivatives()
+    
+    def decdisplayIndexCol_callback(self):
+        val = int(self.entry_displayIndexCol.get())
+        if val < 0:
+            val = 0
+        self.entry_displayIndexCol.delete(0, END)
+        self.entry_displayIndexCol.insert(0, val-1)
+        self.updatePlot_derivatives()
 
     def incInterpType_callback(self):
         self.interpTypeNum = self.interpTypeNum + 1
+        if(self.interpTypeNum > len(self.interpolationTypes) - 1):
+            self.interpTypeNum = len(self.interpolationTypes) - 1
         self.entry_interpType.delete(0, END)
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
-        self.updatePlot()
+        self.updatePlot_derivatives()
 
     def decInterpType_callback(self):
         self.interpTypeNum = self.interpTypeNum - 1
+        if(self.interpTypeNum < 0):
+            self.interpTypeNum = 0
         self.entry_interpType.delete(0, END)
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
-        self.updatePlot()
+        self.updatePlot_derivatives()
 
     def incStateType_callback(self):
         self.stateDisplayNumber = self.stateDisplayNumber + 1
@@ -296,11 +332,13 @@ class dynamicsGUI():
         self.entry_dofIndex.insert(0, self.stateDisplayDof)
 
         self.updatePlot_trajecInfo()
+    # -------------------------------------------------
 
     def displayMode_callback(self):
 
-        self.updatePlot()
+        self.updatePlot_derivatives()
 
+    # ------------------ Update right plot - trajectory information ---------------------
     def updatePlot_trajecInfo(self):
 
         jerkProfile, accelProfile, states, controls = self.interpolator.returnTrajecInformation()
@@ -328,7 +366,8 @@ class dynamicsGUI():
         self.plot_trajecInfo.set_title('trajec Info', fontsize=15, color= self.white, fontweight='bold')
         self.canvas_trajecInfo.draw()
 
-    def updatePlot(self):
+    # ------------------ Update left plot - trajectory derivatives ---------------------
+    def updatePlot_derivatives(self):
         dynParams = self.returnDynParams()
 
         # if dyn params are the same, don't recompute
@@ -336,34 +375,31 @@ class dynamicsGUI():
             pass
         else:
             self.dynParams = dynParams
-            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.reEvaluationIndices, self.iterativeKeyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
+            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
-        index = int(self.entry_displayIndex.get())
+        index = (int(self.entry_displayIndexRow.get()) * self.numDOFs * 2) + int(self.entry_displayIndexCol.get())
 
-        highlightedIndices = np.copy(self.unfilteredTrajec[self.reEvaluationIndices, ])
-        highlightedIndicesIterative = np.copy(self.unfilteredTrajec[self.iterativeKeyPoints, ])
-        self.numEvals = len(self.reEvaluationIndices)
+        # self.keyPointsTrue = self.keyPoints.copy()
+
+        #Remove None values from list
+        displayKeypoints = [x for x in self.keyPoints[self.interpTypeNum] if x is not None]
+
+        highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+        self.numEvals = len(displayKeypoints)
 
         self.plot_AB.clear()
 
         self.plot_AB.plot(self.trueTrajec[:,index], color = self.black, label='Ground truth')
         self.plot_AB.plot(self.unfilteredTrajec[:,index], color = 'orange', label='Unfiltered')
 
-        if(self.interpTypeNum == 1):
-            self.plot_AB.scatter(self.iterativeKeyPoints, highlightedIndicesIterative[:, index], s=10, color = self.yellow, zorder=10)
-        else:
-            self.plot_AB.scatter(self.reEvaluationIndices, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
+        # Plot keypoints
+        self.plot_AB.scatter(displayKeypoints, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
 
         self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = self.yellow, label = 'Interpolated')
         self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
 
-        evalsString = ""
-        if(self.interpTypeNum == 1):
-            evalsString = "Evals: " + str(len(self.iterativeKeyPoints))
-
-        else:
-            evalsString = "Evals: " + str(self.numEvals)
+        evalsString = "Evals: " + str(self.numEvals)
 
         at = AnchoredText(evalsString,
                     prop=dict(size=15), frameon=True, loc='lower right')

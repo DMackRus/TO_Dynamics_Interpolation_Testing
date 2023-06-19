@@ -101,42 +101,36 @@ class interpolator():
         rawTrajec = self.testTrajectories[trajecNumber]
 
         self.dynParams = dynParams
+        keyPoints = self.generateKeypoints(rawTrajec, self.controls[0].copy(), self.dynParams.copy())
 
-        reEvaluationIndices = self.createEvaluationPoints(self.states[0].copy(), self.controls[0].copy(), self.dynParams.copy())
-        numEvals = len(reEvaluationIndices)
+        # print("keypoints generated")
+        # print(keyPoints)
 
-        iterativeKeyPoints = self.generateKeypointsIteratively(rawTrajec)
-        print("num evals: " + str(numEvals))
-        print("num evals iterative: " + str(len(iterativeKeyPoints)))
-        print("evals: ")
-        print(reEvaluationIndices)
-        print("iterative key points: ")
-        print(iterativeKeyPoints)
-        iterativeLinInterpTrajectory = self.generateLinInterpolation(rawTrajec, iterativeKeyPoints.copy())
-        linInterpTrajectory = self.generateLinInterpolation(rawTrajec, reEvaluationIndices.copy())
-        quadInterpTrajectory = self.generateQuadInterpolation(rawTrajec, reEvaluationIndices.copy())
-        cubicInterpTrajectory = self.generateCubicInterpolation(rawTrajec, reEvaluationIndices.copy())
+        setIntervalTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[0].copy())
+        adaptiveJerkTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[1].copy())
+        adaptiveAccellTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[2].copy())
+        iterativeErrorTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[3].copy())
 
         #store lininterp and quadratic interp into interpolateTrajectory
         interpolatedTrajectory = np.zeros((4, self.trajecLength, len(rawTrajec[0])))
         errors = np.zeros((4))
-        interpolatedTrajectory[0,:,:] = linInterpTrajectory.copy()
-        interpolatedTrajectory[1,:,:] = iterativeLinInterpTrajectory.copy()
-        interpolatedTrajectory[2,:,:] = quadInterpTrajectory.copy()
-        interpolatedTrajectory[3,:,:] = cubicInterpTrajectory.copy()
+        interpolatedTrajectory[0,:,:] = setIntervalTrajectory.copy()
+        interpolatedTrajectory[1,:,:] = adaptiveJerkTrajectory.copy()
+        interpolatedTrajectory[2,:,:] = adaptiveAccellTrajectory.copy()
+        interpolatedTrajectory[3,:,:] = iterativeErrorTrajectory.copy()
         
         if(self.task == 2):
-            errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, linInterpTrajectory)
-            errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeLinInterpTrajectory)
-            errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, quadInterpTrajectory)
-            errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, cubicInterpTrajectory)
+            errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, setIntervalTrajectory)
+            errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveJerkTrajectory)
+            errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveAccellTrajectory)
+            errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeErrorTrajectory)
         else:
-            errors[0] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, linInterpTrajectory)
-            errors[1] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, iterativeLinInterpTrajectory)
-            errors[2] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, quadInterpTrajectory)
-            errors[3] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, cubicInterpTrajectory)
+            errors[0] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, setIntervalTrajectory)
+            errors[1] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, adaptiveJerkTrajectory)
+            errors[2] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, adaptiveAccellTrajectory)
+            errors[3] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, iterativeErrorTrajectory)
 
-        return self.filteredTrajectory, interpolatedTrajectory, rawTrajec, errors, reEvaluationIndices, iterativeKeyPoints
+        return self.filteredTrajectory, interpolatedTrajectory, rawTrajec, errors, keyPoints
     
     def calcMeanSumSquaredDiffForTrajec(self, groundTruth, prediction):
 
@@ -148,7 +142,6 @@ class interpolator():
             lenofTrajec = array1Size
         
         meanSqDiff = np.zeros((lenofTrajec))
-
 
         for i in range(lenofTrajec):
             meanSqDiff[i] = self.sumsqDiffBetweenAMatrices(groundTruth[i], prediction[i])
@@ -178,7 +171,6 @@ class interpolator():
     
     def returnTrajecInformation(self):
 
-        print(self.states[0].shape)
         self.jerkProfile = self.calcJerkOverTrajectory(self.states[0])
         self.accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
 
@@ -217,10 +209,26 @@ class interpolator():
 
         return jerk
     
-    def createEvaluationPoints(self, trajectoryStates, trajectoryControls, dynParameters):
-        reEvaluatePoints = []
+    def keyPoints_setInterval(self, dynParameters):
+        keyPoints = []
+        keyPoints.append(0)
+
+        minN = int(dynParameters[0])
+        counter = 0
+
+        for i in range(self.trajecLength - 1):
+            counter += 1
+            if counter >= minN:
+                counter = 0
+                keyPoints.append(i)
+
+        keyPoints.append(self.trajecLength - 1)
+        return keyPoints 
+
+    def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
+        keyPoints = []
         counterSinceLastEval = 0
-        reEvaluatePoints.append(0)
+        keyPoints.append(0)
 
         minN = int(dynParameters[0])
         maxN = int(dynParameters[1])
@@ -228,39 +236,136 @@ class interpolator():
         # temp
         velGradCubeSensitivity = 0.0002
 
-        currentGrads = np.zeros(self.numStates)
-        lastGrads = np.zeros(self.numStates)
-        first = True
+        jerkProfile = self.calcJerkOverTrajectory(self.states[0])
+        print(jerkProfile.shape)
 
-        for i in range(self.trajecLength - 1):
+        for i in range(len(jerkProfile)):
 
             if(counterSinceLastEval >= minN):
-
-                currState = trajectoryStates[i,:].copy()
-                lastState = trajectoryStates[i-1,:].copy()
-
-                currentGrads = currState - lastState
-
-                if(first):
-                    first = False
-                    reEvaluatePoints.append(i)
-                    counterSinceLastEval = 0
-                else:
-                    if(self.newEvaluationNeeded(currentGrads, lastGrads, velGradSensitivty, velGradCubeSensitivity)):
-                        reEvaluatePoints.append(i)
+                for j in range(len(jerkProfile[i])):
+                    if(jerkProfile[i,j] > velGradSensitivty):
+                        keyPoints.append(i)
                         counterSinceLastEval = 0
-
-                lastGrads = currentGrads.copy()
             
             if(counterSinceLastEval >= maxN):
-                reEvaluatePoints.append(i)
+                keyPoints.append(i)
                 counterSinceLastEval = 0
 
             counterSinceLastEval = counterSinceLastEval + 1
 
-        reEvaluatePoints.append(self.trajecLength - 1)
+        keyPoints.append(self.trajecLength - 1)
 
-        return reEvaluatePoints
+        return keyPoints 
+
+    def keyPoints_adaptiveAccel(self, trajectoryStates, dynParameters):
+        keyPoints = []
+        counterSinceLastEval = 0
+        keyPoints.append(0)
+
+        minN = int(dynParameters[0])
+        maxN = int(dynParameters[1])
+        velGradSensitivty = dynParameters[2]
+        # temp
+        velGradCubeSensitivity = 0.0002
+
+        accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
+
+        for i in range(len(accelProfile)):
+
+            if(counterSinceLastEval >= minN):
+
+                for j in range(len(accelProfile[i])):
+                    if(accelProfile[i,j] > velGradSensitivty):
+                        keyPoints.append(i)
+                        counterSinceLastEval = 0
+            
+            if(counterSinceLastEval >= maxN):
+                keyPoints.append(i)
+                counterSinceLastEval = 0
+
+            counterSinceLastEval = counterSinceLastEval + 1
+
+        keyPoints.append(self.trajecLength - 1)
+
+        return keyPoints  
+
+    def keyPoints_iteratively(self, trajectoryStates, dynParameters):
+        keyPoints = []
+
+        startInterval = int(self.trajecLength / 2)
+        numMaxBins = int((self.trajecLength / startInterval))
+
+        for i in range(numMaxBins):
+            binComplete = False
+            startIndex = i * startInterval
+            endIndex = (i + 1) * startInterval
+            if(endIndex >= self.trajecLength):
+                endIndex = self.trajecLength - 1
+            listofIndicesCheck = []
+            indexTuple = (startIndex, endIndex)
+            listofIndicesCheck.append(indexTuple)
+            subListIndices = []
+            subListWithMidpoints = []
+
+            while(not binComplete):
+
+                allChecksComplete = True
+                for j in range(len(listofIndicesCheck)):
+
+                    approximationGood, midIndex = self.oneCheck(trajectoryStates, listofIndicesCheck[j])
+
+                    if not approximationGood:
+                        allChecksComplete = False
+                        
+                        indexTuple1 = (listofIndicesCheck[j][0], midIndex)
+                        indexTuple2 = (midIndex, listofIndicesCheck[j][1])
+                        subListIndices.append(indexTuple1)
+                        subListIndices.append(indexTuple2)
+                    else:
+                        subListWithMidpoints.append(listofIndicesCheck[j][0])
+                        subListWithMidpoints.append(midIndex)
+                        subListWithMidpoints.append(listofIndicesCheck[j][1])
+
+                if(allChecksComplete):
+                    binComplete = True
+                    for k in range(len(subListWithMidpoints)):
+                        keyPoints.append(subListWithMidpoints[k])
+
+                    subListWithMidpoints = []
+
+                listofIndicesCheck = subListIndices.copy()
+                subListIndices = []
+
+        keyPoints.sort()
+        keyPoints = list(dict.fromkeys(keyPoints))
+
+        return keyPoints
+    
+    def generateKeypoints(self, trajectoryStates, trajectoryControls, dynParameters):
+        keyPoints = []
+
+        keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
+        keyPoints_adaptiveJerk = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters)
+        keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
+        keyPoints_iteratively = self.keyPoints_iteratively(trajectoryStates, dynParameters)
+
+        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively))
+
+        # Extend the shorter lists with None values
+        keyPoints_setInterval.extend([None] * (max_length - len(keyPoints_setInterval)))
+        keyPoints_adaptiveJerk.extend([None] * (max_length - len(keyPoints_adaptiveJerk)))
+        keyPoints_adaptiveAccel.extend([None] * (max_length - len(keyPoints_adaptiveAccel)))
+        keyPoints_iteratively.extend([None] * (max_length - len(keyPoints_iteratively)))
+
+        # keyPoints.append(keyPoints_setInterval)
+        # keyPoints.append(keyPoints_adaptiveJerk)
+        # keyPoints.append(keyPoints_adaptiveAccel)
+        # keyPoints.append(keyPoints_iteratively)
+
+        # Stack the keypoints into one array
+        keyPoints = np.vstack((keyPoints_setInterval, keyPoints_adaptiveJerk, keyPoints_adaptiveAccel, keyPoints_iteratively))
+
+        return keyPoints
     
 
     def newEvaluationNeeded(self, currentGrads, lastGrads, sensitivity, cubeSensitivity):
@@ -291,59 +396,7 @@ class interpolator():
                     #print("new eval needed, diff: " + str(velGradDiff))
             
         return newEvalNeeded
-    
-    def generateKeypointsIteratively(self, A_matrices):
-        evalPoints = []
-
-        startInterval = int(self.trajecLength / 2)
-        numMaxBins = int((self.trajecLength / startInterval))
-
-        for i in range(numMaxBins):
-            binComplete = False
-            startIndex = i * startInterval
-            endIndex = (i + 1) * startInterval
-            if(endIndex >= self.trajecLength):
-                endIndex = self.trajecLength - 1
-            listofIndicesCheck = []
-            indexTuple = (startIndex, endIndex)
-            listofIndicesCheck.append(indexTuple)
-            subListIndices = []
-            subListWithMidpoints = []
-
-            while(not binComplete):
-
-                allChecksComplete = True
-                for j in range(len(listofIndicesCheck)):
-
-                    approximationGood, midIndex = self.oneCheck(A_matrices, listofIndicesCheck[j])
-
-                    if not approximationGood:
-                        allChecksComplete = False
-                        
-                        indexTuple1 = (listofIndicesCheck[j][0], midIndex)
-                        indexTuple2 = (midIndex, listofIndicesCheck[j][1])
-                        subListIndices.append(indexTuple1)
-                        subListIndices.append(indexTuple2)
-                    else:
-                        subListWithMidpoints.append(listofIndicesCheck[j][0])
-                        subListWithMidpoints.append(midIndex)
-                        subListWithMidpoints.append(listofIndicesCheck[j][1])
-
-                if(allChecksComplete):
-                    binComplete = True
-                    for k in range(len(subListWithMidpoints)):
-                        evalPoints.append(subListWithMidpoints[k])
-
-                    subListWithMidpoints = []
-
-                listofIndicesCheck = subListIndices.copy()
-                subListIndices = []
-
-        evalPoints.sort()
-        evalPoints = list(dict.fromkeys(evalPoints))
-
-        return evalPoints
-    
+        
     def oneCheck(self, A_matrices, indexTuple):
         approximationGood = False
 
@@ -419,6 +472,8 @@ class interpolator():
         sizeofAMatrix = len(A_matrices[0])
         linInterpolationData = np.zeros((self.trajecLength, sizeofAMatrix))
 
+        #Drop any none values at end of list
+        reEvaluationIndicies = [x for x in reEvaluationIndicies if x is not None]
         numBins = len(reEvaluationIndicies) - 1
         #print("num bins: " + str(numBins))
         stepsBetween = 0
