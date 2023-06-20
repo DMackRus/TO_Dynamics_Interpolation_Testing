@@ -4,7 +4,6 @@ from tkinter import *
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from numpy import genfromtxt
-# from ttkwidgets.autocomplete import AutocompleteEntry
 from interpolateDynamics import *
 from matplotlib.offsetbox import AnchoredText
 

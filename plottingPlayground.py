@@ -207,7 +207,7 @@ def makeFilter():
 
 def plotOneTask(taskName):
 
-    dataNumber = "2"
+    dataNumber = "4"
 
     data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
 
@@ -215,11 +215,13 @@ def plotOneTask(taskName):
     headers = list(csv.reader(file, delimiter=","))
     file.close()
 
-    print(headers[0])
+    DATA_FIELDS = 5 # opt time, cost reduction, percentage derivs, time getting derivs, numIterations
+    OPTIMISERS_USED = 11
+
     lenHeaders = len(headers[0])
     labels = []
-    for i in range(int(lenHeaders/4)):
-        labels.append(headers[0][i*4])
+    for i in range(int(lenHeaders/DATA_FIELDS)):
+        labels.append(headers[0][i*DATA_FIELDS])
 
 
     print(labels)
@@ -229,43 +231,60 @@ def plotOneTask(taskName):
     numTrajecs = len(data) - 2
     print("num trajecs: " + str(numTrajecs))
 
-    optTimes = np.zeros((numTrajecs, 5))
-    costReductions = np.zeros((numTrajecs, 5))
-    avgNumDerivs = np.zeros((numTrajecs, 5))
-    avgTimeGettingDerivs = np.zeros((numTrajecs, 5))
+    optTimes = np.zeros((numTrajecs, OPTIMISERS_USED))
+    costReductions = np.zeros((numTrajecs, OPTIMISERS_USED))
+    avgPercentageDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
+    avgTimeGettingDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
+    numIterations = np.zeros((numTrajecs, OPTIMISERS_USED))
+
 
     for i in range(numTrajecs):
-        for j in range(5):
+        for j in range(OPTIMISERS_USED):
 
-            optTimes[i, j] = data[i + 2, (j * 4)]
-            costReductions[i, j] = data[i + 2, (j * 4) + 1]
-            avgNumDerivs[i, j] = data[i + 2, (j * 4) + 2]
-            avgTimeGettingDerivs[i, j] = data[i + 2, (j * 4) + 3]
+            optTimes[i, j] = data[i + 2, (j * DATA_FIELDS)]
+            costReductions[i, j] = data[i + 2, (j * DATA_FIELDS) + 1]
+            avgPercentageDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 2]
+            avgTimeGettingDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 3]
+            numIterations[i, j] = data[i + 2, (j * DATA_FIELDS) + 4]
 
-    fig, axes = plt.subplots(2, 2, figsize = (18,8))
+
+    fig, axes = plt.subplots(3, 1, figsize = (18,8))
     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Total optimisation time (s)"
     orange = "#edb83b"
-    bp1 = box_plot(optTimes, orange, yAxisLabel, axes[0,0], labels)
+    bp1 = box_plot(optTimes, orange, yAxisLabel, axes[0], labels)
 
     boxPlotTitle = "Cost Reduction against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Cost Reduction"
     orange = "#edb83b"
-    bp2 = box_plot(costReductions, orange, yAxisLabel, axes[0,1], labels)
+    bp2 = box_plot(costReductions, orange, yAxisLabel, axes[1], labels)
 
-    boxPlotTitle = "Average calculated derivatives against interpolation methods " + "panda_pushing_clutter"
-    yAxisLabel = "Average calculated derivatives"
+    boxPlotTitle = "Num iterations against interpolation methods " + "panda_pushing_clutter"
+    yAxisLabel = "Cost Reduction"
     orange = "#edb83b"
-    bp3 = box_plot(avgNumDerivs, orange, yAxisLabel, axes[1, 0], labels)
+    bp3 = box_plot(numIterations, orange, yAxisLabel, axes[2], labels)
+
+
+
+    fig.suptitle(taskName + " - optimisation information", fontsize=16)
+    plt.show()
+
+
+    fig, axes = plt.subplots(2, 1, figsize = (18,8))
+    boxPlotTitle = "Average percentage calculated derivatives against interpolation methods " + "panda_pushing_clutter"
+    yAxisLabel = "Average percentage calculate derivatives"
+    orange = "#edb83b"
+    bp3 = box_plot(avgPercentageDerivs, orange, yAxisLabel, axes[0], labels, True)
 
     boxPlotTitle = "average time getting derivatives against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Average time getting derivatives (s)"
     orange = "#edb83b"
-    bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1,1], labels)
-    fig.suptitle(taskName, fontsize=16)
+    bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1], labels)
+    fig.suptitle(taskName + " - derivative information", fontsize=16)
+    
     # plt.savefig('data/resultsData/'  + dataNumber + "/" + taskName + '_boxplots.svg', format='svg', dpi=1200)
-    plt.savefig('data/resultsData/' + dataNumber + "/" + taskName + '_boxplots.png')
-    # plt.show()
+    # plt.savefig('data/resultsData/' + dataNumber + "/" + taskName + '_boxplots.png')
+    plt.show()
 
 
 def plotResults():
@@ -280,12 +299,14 @@ def plotResults():
 
     
 
-def box_plot(data, fill_color, yAxisTitle, ax, labels):
+def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
     normalPosterColour = "#103755"
     highlightPosterColor = "#EEF30D"
 
 
     bp = ax.boxplot(data, patch_artist=True, meanprops={"marker":"s","markerfacecolor":highlightPosterColor, "markeredgecolor":highlightPosterColor}, showmeans=True, showfliers=False)
+    if logyAxis:
+        ax.set_yscale('log')
     black = "#1c1b1a"
 
     
@@ -333,7 +354,11 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels):
     ax.set_ylabel(yAxisTitle, fontsize=labelSize)
     # ax.set_title(yAxisTitle)
 
-    ax.set_xticks([1, 2, 3, 4, 5])
+    xticks = []
+    for i in range(len(labels)):
+        xticks.append(i + 1)
+
+    ax.set_xticks(xticks)
     ax.set_xticklabels(labels, fontsize=11)
         
     return bp
