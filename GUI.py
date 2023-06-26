@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tkinter import *
 import tkinter as tk
+from ttkwidgets.autocomplete import AutocompleteEntry
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from numpy import genfromtxt
 from interpolateDynamics import *
@@ -31,11 +32,8 @@ class dynamicsGUI():
         self.numEvals = 0
 
         self.setupGUI()
+        self.load_callback()
 
-        self.taskNumber = 1
-
-        self.interpolator = interpolator(0, self.taskNumber)
-        self.numDOFs = self.interpolator.dof
         self.dynParams = []
         self.trajectoryNumber = 0
 
@@ -107,7 +105,7 @@ class dynamicsGUI():
     def setupButtons(self):
         settingsWidth = 10
 
-        # ------ A/B matrix widgets ------
+        # ------------------------------------ A/B matrix widgets --------------------------------------------------------
         self.label_minN = tk.Label(self.AB_widgetsFrame, text="minN", width=settingsWidth)
         self.entry_minN = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_minN.insert(0, "5")
@@ -144,6 +142,15 @@ class dynamicsGUI():
         self.entry_interpType.insert(0, self.interpolationTypes[self.interpTypeNum])
         self.button_interpType_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incInterpType_callback)
         self.button_interpType_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decInterpType_callback)
+
+        self.label_filePath = tk.Label(self.AB_widgetsFrame, text = "File path", width=int(settingsWidth * 2.5))
+        # self.entry_filePath = tk.Entry.(self.AB_widgetsFrame, width=int(settingsWidth * 2.5))
+        self.filepaths = ["panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.entry_filePath = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2.5), completevalues=self.filepaths)
+        self.entry_filePath.insert(0, self.filepaths[0])
+        self.button_filePath = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
+
+        # ------------------------------------------------------------------------------------------------------------------------
 
         self.label_minN.grid(row=0, column=0, columnspan = 3, sticky='EW')
 
@@ -182,6 +189,10 @@ class dynamicsGUI():
         self.button_interpType_dec.grid(row=2, column=7)
         self.entry_interpType.grid(row=2, column=8)
         self.button_interpType_inc.grid(row=2, column=9)
+
+        self.label_filePath.grid(row=0, column=10, columnspan = 3, sticky='EW')
+        self.entry_filePath.grid(row=1, column=10, columnspan = 3, sticky='EW')
+        self.button_filePath.grid(row=2, column=10, columnspan = 3, sticky='EW')
 
         # ------ state widgets ------
         #label for state type
@@ -340,6 +351,11 @@ class dynamicsGUI():
     def displayMode_callback(self):
 
         self.updatePlot_derivatives()
+
+    def load_callback(self):
+        self.task = self.entry_filePath.get()
+        self.interpolator = interpolator(0, self.task)
+        self.numDOFs = self.interpolator.dof
 
     # ------------------ Update right plot - trajectory information ---------------------
     def updatePlot_trajecInfo(self):

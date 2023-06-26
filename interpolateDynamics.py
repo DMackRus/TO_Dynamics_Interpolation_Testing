@@ -9,29 +9,9 @@ numTrajectoriesTest = 1
 class interpolator():
     def __init__(self, trajecNumber, task):
 
-        startPath = ""
-
-        if(task == 0):
-            dof = 2
-            num_ctrl = 2
-            startPath = "savedTrajecInfo/doublePendulum/"
-        elif(task == 1):
-            dof = 7
-            num_ctrl = 7
-            startPath = "savedTrajecInfo/panda_reaching/"
-
-        elif(task == 2):
-            dof = 9
-            num_ctrl = 7
-            startPath = "savedTrajecInfo/panda_pushing/"
-        elif(task == 3):
-            dof = 13
-            num_ctrl = 7
-            startPath = "savedTrajecInfo/panda_pushing_clutter/"
-
-        else:
-            print("invalid mode specified")
-            exit()
+        startPath = "savedTrajecInfo/" + task + "/"
+        dof = 7
+        num_ctrl = 7
 
         self.dof = dof
         self.task = task
