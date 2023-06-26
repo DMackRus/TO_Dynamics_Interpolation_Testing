@@ -247,34 +247,38 @@ class dynamicsGUI():
 
     def incdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
+        val = val + 1
         if val > self.numDOFs - 1:
             val = self.numDOFs - 1
         self.entry_displayIndexRow.delete(0, END)
-        self.entry_displayIndexRow.insert(0, val+1)
+        self.entry_displayIndexRow.insert(0, val)
         self.updatePlot_derivatives()
     
     def decdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
+        val = val - 1
         if val < 0:
             val = 0
         self.entry_displayIndexRow.delete(0, END)
-        self.entry_displayIndexRow.insert(0, val-1)
+        self.entry_displayIndexRow.insert(0, val)
         self.updatePlot_derivatives()
 
     def incdisplayIndexCol_callback(self):
         val = int(self.entry_displayIndexCol.get())
-        if val > self.numDOFs - 1:
-            val = self.numDOFs - 1
+        val = val + 1
+        if val > (self.numDOFs * 2) - 1:
+            val = (self.numDOFs * 2) - 1
         self.entry_displayIndexCol.delete(0, END)
-        self.entry_displayIndexCol.insert(0, val+1)
+        self.entry_displayIndexCol.insert(0, val)
         self.updatePlot_derivatives()
     
     def decdisplayIndexCol_callback(self):
         val = int(self.entry_displayIndexCol.get())
+        val = val - 1
         if val < 0:
             val = 0
         self.entry_displayIndexCol.delete(0, END)
-        self.entry_displayIndexCol.insert(0, val-1)
+        self.entry_displayIndexCol.insert(0, val)
         self.updatePlot_derivatives()
 
     def incInterpType_callback(self):
@@ -377,6 +381,7 @@ class dynamicsGUI():
             self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = (int(self.entry_displayIndexRow.get()) * self.numDOFs * 2) + int(self.entry_displayIndexCol.get())
+        print(index)
 
         # self.keyPointsTrue = self.keyPoints.copy()
 
