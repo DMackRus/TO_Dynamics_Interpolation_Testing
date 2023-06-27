@@ -17,9 +17,9 @@ class dynamicsGUI():
         self.master.title('Interactive Dynamics')
 
         self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error"]
-        self.interpTypeNum = 0
+        self.interpTypeNum = 2
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
-        self.stateDisplayNumber = 0
+        self.stateDisplayNumber = 3
         self.stateDisplayDof = 0
 
         self.darkBlue = '#103755'
@@ -114,13 +114,13 @@ class dynamicsGUI():
         self.entry_maxN.insert(0, "200")
         self.label_jerkSensitivity = tk.Label(self.AB_widgetsFrame, text="jerkSensitivity", width=settingsWidth)
         self.entry_jerkSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_jerkSensitivity.insert(0, "0.002")
+        self.entry_jerkSensitivity.insert(0, "0.0005") 
         self.label_displayIndexRow = tk.Label(self.AB_widgetsFrame, text="displayIndexRow", width=settingsWidth)
         self.entry_displayIndexRow = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_displayIndexRow.insert(0, "0")
         self.label_displayIndexCol = tk.Label(self.AB_widgetsFrame, text="displayIndexCol", width=settingsWidth)
         self.entry_displayIndexCol = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_displayIndexCol.insert(0, "0")
+        self.entry_displayIndexCol.insert(0, "2")
         self.button_evaluate = tk.Button(self.AB_widgetsFrame, text="Evaluate", command=self.displayMode_callback)
 
         self.button_MinN_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incMinN_callback)
@@ -143,12 +143,11 @@ class dynamicsGUI():
         self.button_interpType_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incInterpType_callback)
         self.button_interpType_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decInterpType_callback)
 
-        self.label_filePath = tk.Label(self.AB_widgetsFrame, text = "File path", width=int(settingsWidth * 2.5))
-        # self.entry_filePath = tk.Entry.(self.AB_widgetsFrame, width=int(settingsWidth * 2.5))
-        self.filepaths = ["panda_reaching", "panda_pushing", "panda_pushing_clutter"]
-        self.entry_filePath = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2.5), completevalues=self.filepaths)
-        self.entry_filePath.insert(0, self.filepaths[0])
-        self.button_filePath = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
+        self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Tasks", width=int(settingsWidth * 2))
+        self.taskNames = ["panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
+        self.entry_tasks.insert(0, self.taskNames[0])
+        self.button_tasks = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
 
         # ------------------------------------------------------------------------------------------------------------------------
 
@@ -190,9 +189,9 @@ class dynamicsGUI():
         self.entry_interpType.grid(row=2, column=8)
         self.button_interpType_inc.grid(row=2, column=9)
 
-        self.label_filePath.grid(row=0, column=10, columnspan = 3, sticky='EW')
-        self.entry_filePath.grid(row=1, column=10, columnspan = 3, sticky='EW')
-        self.button_filePath.grid(row=2, column=10, columnspan = 3, sticky='EW')
+        self.label_tasks.grid(row=0, column=10, columnspan = 3, sticky='EW')
+        self.entry_tasks.grid(row=1, column=10, columnspan = 3, sticky='EW')
+        self.button_tasks.grid(row=2, column=10, columnspan = 3, sticky='EW')
 
         # ------ state widgets ------
         #label for state type
@@ -204,7 +203,7 @@ class dynamicsGUI():
         
         self.label_dofIndex = tk.Label(self.state_widgetFrame, text="dof row", width=settingsWidth)
         self.entry_dofIndex = tk.Entry(self.state_widgetFrame, width=settingsWidth)
-        self.entry_dofIndex.insert(0, "0")
+        self.entry_dofIndex.insert(0, "2")
         self.button_dofIndex_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incDofIndex_callback)
         self.button_dofIndex_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decDofIndex_callback)
 
@@ -353,33 +352,58 @@ class dynamicsGUI():
         self.updatePlot_derivatives()
 
     def load_callback(self):
-        self.task = self.entry_filePath.get()
-        self.interpolator = interpolator(0, self.task)
+        self.task = self.entry_tasks.get()
+        self.interpolator = interpolator(self.task)
         self.numDOFs = self.interpolator.dof
+
+        self.dynParams = []
+        self.updatePlot_derivatives()
+        self.updatePlot_trajecInfo()
 
     # ------------------ Update right plot - trajectory information ---------------------
     def updatePlot_trajecInfo(self):
 
         jerkProfile, accelProfile, states, controls = self.interpolator.returnTrajecInformation()
 
+        #extend acceleration profile to match length of states
+        accelProfile = np.concatenate((accelProfile, np.zeros((states.shape[0] - accelProfile.shape[0], accelProfile.shape[1]))), axis=0)
+
+        #extend jerk profile to match length of states
+        jerkProfile = np.concatenate((jerkProfile, np.zeros((states.shape[0] - jerkProfile.shape[0], jerkProfile.shape[1]))), axis=0)
+
         self.plot_trajecInfo.clear()
         displayDof = int(self.entry_dofIndex.get())
 
+        displayKeypoints = self.keyPoints[self.interpTypeNum]
+        displayKeypoints = displayKeypoints[displayDof]
+        print("display key points length: ", len(displayKeypoints))
+        highlightedIndices = []
+        
         #Position
         if(self.stateDisplayNumber == 0):
             self.plot_trajecInfo.plot(states[:,displayDof], label='Position', color = self.black)
+            highlightedIndices = np.copy(states[displayKeypoints, ])
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         #Velocity
         elif(self.stateDisplayNumber == 1):
             self.plot_trajecInfo.plot(states[:,displayDof+self.numDOFs], label='Velocity', color = self.black)
+            highlightedIndices = np.copy(states[displayKeypoints, ])
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof + self.numDOFs], s=10, color = self.yellow, zorder=10)
         #Acceleration
         elif(self.stateDisplayNumber == 2):
-            self.plot_trajecInfo.plot(accelProfile[:,displayDof+self.numDOFs], label='Acceleration', color = self.black)
+            self.plot_trajecInfo.plot(accelProfile[:,displayDof], label='Acceleration', color = self.black)
+            highlightedIndices = np.copy(accelProfile[displayKeypoints, ])
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         #Jerk
         elif(self.stateDisplayNumber == 3):
-            self.plot_trajecInfo.plot(jerkProfile[:,displayDof+self.numDOFs], label='Jerk', color = self.black)
+            self.plot_trajecInfo.plot(jerkProfile[:,displayDof], label='Jerk', color = self.black)
+            highlightedIndices = np.copy(jerkProfile[displayKeypoints, ])
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         #Control
         elif(self.stateDisplayNumber == 4):
             self.plot_trajecInfo.plot(controls[:,displayDof], label='Control', color = self.black)
+            highlightedIndices = np.copy(controls[displayKeypoints, ])
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         
         self.plot_trajecInfo.legend()
         self.plot_trajecInfo.set_title('trajec Info', fontsize=15, color= self.white, fontweight='bold')
@@ -397,14 +421,15 @@ class dynamicsGUI():
             self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = (int(self.entry_displayIndexRow.get()) * self.numDOFs * 2) + int(self.entry_displayIndexCol.get())
-        print(index)
 
-        # self.keyPointsTrue = self.keyPoints.copy()
+        col = int(self.entry_displayIndexCol.get())
 
         #Remove None values from list
-        displayKeypoints = [x for x in self.keyPoints[self.interpTypeNum] if x is not None]
-
+        # displayKeypoints = [x for x in self.keyPoints[self.interpTypeNum] if x is not None]
+        displayKeypoints = self.keyPoints[self.interpTypeNum]
+        displayKeypoints = displayKeypoints[col % self.numDOFs]
         highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+
         self.numEvals = len(displayKeypoints)
 
         self.plot_AB.clear()
@@ -416,7 +441,7 @@ class dynamicsGUI():
         self.plot_AB.scatter(displayKeypoints, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
 
         self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = self.yellow, label = 'Interpolated')
-        self.plot_AB.legend(loc='upper right')
+        # self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
 
         evalsString = "Evals: " + str(self.numEvals)
@@ -443,7 +468,6 @@ class dynamicsGUI():
 
         return [minN, maxN, jerkSensitivity]
     
-
 if __name__ == "__main__":
     root = Tk()
     myGUI = dynamicsGUI(root)
