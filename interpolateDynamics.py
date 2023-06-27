@@ -333,54 +333,54 @@ class interpolator():
         keyPoints = [[] for x in range(self.dof)]
         for i in range(self.dof):
             keyPoints[i].append(0)
-            keyPoints[i].append(self.trajecLength - 1)
+            # keyPoints[i].append(self.trajecLength - 1)
 
         # startInterval = int(self.trajecLength / 2)
         # numMaxBins = int((self.trajecLength / startInterval))
 
-        # for i in range(numMaxBins):
-        #     binComplete = False
-        #     startIndex = i * startInterval
-        #     endIndex = (i + 1) * startInterval
-        #     if(endIndex >= self.trajecLength):
-        #         endIndex = self.trajecLength - 1
-        #     listofIndicesCheck = []
-        #     indexTuple = (startIndex, endIndex)
-        #     listofIndicesCheck.append(indexTuple)
-        #     subListIndices = []
-        #     subListWithMidpoints = []
+        startIndex = 0
+        endIndex = self.trajecLength - 1
 
-        #     while(not binComplete):
+        for i in range(self.dof):
+            binComplete = False
+            listofIndicesCheck = []
+            indexTuple = (startIndex, endIndex)
+            listofIndicesCheck.append(indexTuple)
+            subListIndices = []
+            subListWithMidpoints = []
 
-        #         allChecksComplete = True
-        #         for j in range(len(listofIndicesCheck)):
+            while(not binComplete):
 
-        #             approximationGood, midIndex = self.oneCheck(trajectoryStates, listofIndicesCheck[j])
+                allChecksComplete = True
+                for j in range(len(listofIndicesCheck)):
 
-        #             if not approximationGood:
-        #                 allChecksComplete = False
+                    approximationGood, midIndex = self.oneCheck(trajectoryStates, listofIndicesCheck[j], i)
+
+                    if not approximationGood:
+                        allChecksComplete = False
                         
-        #                 indexTuple1 = (listofIndicesCheck[j][0], midIndex)
-        #                 indexTuple2 = (midIndex, listofIndicesCheck[j][1])
-        #                 subListIndices.append(indexTuple1)
-        #                 subListIndices.append(indexTuple2)
-        #             else:
-        #                 subListWithMidpoints.append(listofIndicesCheck[j][0])
-        #                 subListWithMidpoints.append(midIndex)
-        #                 subListWithMidpoints.append(listofIndicesCheck[j][1])
+                        indexTuple1 = (listofIndicesCheck[j][0], midIndex)
+                        indexTuple2 = (midIndex, listofIndicesCheck[j][1])
+                        subListIndices.append(indexTuple1)
+                        subListIndices.append(indexTuple2)
+                    else:
+                        subListWithMidpoints.append(listofIndicesCheck[j][0])
+                        subListWithMidpoints.append(midIndex)
+                        subListWithMidpoints.append(listofIndicesCheck[j][1])
 
-        #         if(allChecksComplete):
-        #             binComplete = True
-        #             for k in range(len(subListWithMidpoints)):
-        #                 keyPoints.append(subListWithMidpoints[k])
+                if(allChecksComplete):
+                    binComplete = True
+                    for k in range(len(subListWithMidpoints)):
+                        keyPoints[i].append(subListWithMidpoints[k])
 
-        #             subListWithMidpoints = []
+                    subListWithMidpoints = []
 
-        #         listofIndicesCheck = subListIndices.copy()
-        #         subListIndices = []
+                listofIndicesCheck = subListIndices.copy()
+                subListIndices = []
 
-        # keyPoints.sort()
-        # keyPoints = list(dict.fromkeys(keyPoints))
+        for i in range(self.dof):
+            keyPoints[i].sort()
+            keyPoints[i] = list(dict.fromkeys(keyPoints[i]))
 
         return keyPoints
     
@@ -414,7 +414,7 @@ class interpolator():
 
         return keyPoints
         
-    def oneCheck(self, A_matrices, indexTuple):
+    def oneCheck(self, A_matrices, indexTuple, dofNum):
         approximationGood = False
 
         startIndex = indexTuple[0]
@@ -431,13 +431,13 @@ class interpolator():
         diff = endVals - startVals
         linInterpMidVals = startVals + (diff/2)
 
-        meanSqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
+        meanSqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals, dofNum)
         # sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
         print("meanSqDiff: " + str(meanSqDiff))
 
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
-        if(meanSqDiff < 0.002):
+        if(meanSqDiff < 0.003):
             approximationGood = True
 
         return approximationGood, midIndex
@@ -455,23 +455,38 @@ class interpolator():
 
         return sumsqDiff
 
-    def meansqDiffBetweenAMatrices(self, matrix1, matrix2):
+    def meansqDiffBetweenAMatrices(self, matrix1, matrix2, dofNum):
         sumsqDiff = 0
         counter = 0
         counterSmallVals = 0
+        offsets = [0, self.dof]
 
-        for i in range(len(matrix1)):
-            sqDiff = (matrix1[i] - matrix2[i])**2
-            if(sqDiff < 0.000001):
+        for i in range(2):
+            for j in range(self.dof):
+                sqDiff = (matrix1[offsets[i] + dofNum + (j * self.dof)] - matrix2[offsets[i] + dofNum + (j * self.dof)])**2
+                if(sqDiff < 0.000001):
+                    sqDiff = 0
+                    counterSmallVals += 1
                 #ignore large values
-                sqDiff = 0
-                counterSmallVals += 1
-            elif(sqDiff > 0.5):
-                sqDiff = 0
-            else:
-                counter = counter + 1
+                # elif(sqDiff > 0.5):
+                #     sqDiff = 0
+                else:
+                    counter = counter + 1
 
-            sumsqDiff = sumsqDiff + sqDiff
+                sumsqDiff = sumsqDiff + sqDiff
+
+        # for i in range(len(matrix1)):
+        #     sqDiff = (matrix1[i] - matrix2[i])**2
+        #     if(sqDiff < 0.000001):
+        #         sqDiff = 0
+        #         counterSmallVals += 1
+        #     #ignore large values
+        #     elif(sqDiff > 0.5):
+        #         sqDiff = 0
+        #     else:
+        #         counter = counter + 1
+
+        #     sumsqDiff = sumsqDiff + sqDiff
 
         if(counter == 0):
             sumsqDiff = 0

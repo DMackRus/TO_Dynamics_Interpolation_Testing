@@ -17,7 +17,7 @@ class dynamicsGUI():
         self.master.title('Interactive Dynamics')
 
         self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error"]
-        self.interpTypeNum = 2
+        self.interpTypeNum = 3
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
         self.stateDisplayNumber = 3
         self.stateDisplayDof = 0
