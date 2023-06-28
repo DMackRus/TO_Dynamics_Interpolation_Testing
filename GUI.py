@@ -17,10 +17,10 @@ class dynamicsGUI():
         self.master.title('Interactive Dynamics')
 
         self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error"]
-        self.interpTypeNum = 3
+        self.interpTypeNum = 2
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
-        self.stateDisplayNumber = 3
-        self.stateDisplayDof = 0
+        self.stateDisplayNumber = 1
+        self.stateDisplayDof = 2
 
         self.darkBlue = '#103755'
         self.lightBlue = '#90CBCB'
@@ -30,11 +30,11 @@ class dynamicsGUI():
         self.black = '#000000'
 
         self.numEvals = 0
+        self.dynParams = []
 
         self.setupGUI()
         self.load_callback()
 
-        self.dynParams = []
         self.trajectoryNumber = 0
 
         self.updatePlot_trajecInfo()
@@ -91,10 +91,13 @@ class dynamicsGUI():
         self.canvas_AB.get_tk_widget().grid(row=0, column=0)
         self.canvas_trajecInfo.get_tk_widget().grid(row=0, column=1)
 
+        toolbar = NavigationToolbar2Tk(self.canvas_trajecInfo,
+                                    self.master)
+        # toolbar.grid(row=1, column=0)
+        toolbar.update()
+
         # # creating the Matplotlib toolbar
-        # toolbar = NavigationToolbar2Tk(self.canvas,
-        #                             self.master)
-        # toolbar.update()
+        
     
         # # placing the toolbar on the Tkinter window
         # self.canvas.get_tk_widget().pack(side=LEFT)
@@ -114,7 +117,7 @@ class dynamicsGUI():
         self.entry_maxN.insert(0, "200")
         self.label_jerkSensitivity = tk.Label(self.AB_widgetsFrame, text="jerkSensitivity", width=settingsWidth)
         self.entry_jerkSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_jerkSensitivity.insert(0, "0.0005") 
+        self.entry_jerkSensitivity.insert(0, "0.00015") 
         self.label_displayIndexRow = tk.Label(self.AB_widgetsFrame, text="displayIndexRow", width=settingsWidth)
         self.entry_displayIndexRow = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_displayIndexRow.insert(0, "0")
@@ -203,7 +206,7 @@ class dynamicsGUI():
         
         self.label_dofIndex = tk.Label(self.state_widgetFrame, text="dof row", width=settingsWidth)
         self.entry_dofIndex = tk.Entry(self.state_widgetFrame, width=settingsWidth)
-        self.entry_dofIndex.insert(0, "2")
+        self.entry_dofIndex.insert(0, str(self.stateDisplayDof))
         self.button_dofIndex_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incDofIndex_callback)
         self.button_dofIndex_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decDofIndex_callback)
 
@@ -412,6 +415,8 @@ class dynamicsGUI():
     # ------------------ Update left plot - trajectory derivatives ---------------------
     def updatePlot_derivatives(self):
         dynParams = self.returnDynParams()
+        print("dynParams: ", dynParams)
+        print("self.dynParams: ", self.dynParams)
 
         # if dyn params are the same, don't recompute
         if dynParams == self.dynParams:
