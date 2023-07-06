@@ -207,7 +207,7 @@ def makeFilter():
 
 def plotOneTask(taskName):
 
-    dataNumber = "4"
+    dataNumber = "6"
 
     data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
 
@@ -216,7 +216,7 @@ def plotOneTask(taskName):
     file.close()
 
     DATA_FIELDS = 5 # opt time, cost reduction, percentage derivs, time getting derivs, numIterations
-    OPTIMISERS_USED = 11
+    OPTIMISERS_USED = 6
 
     lenHeaders = len(headers[0])
     labels = []
@@ -233,6 +233,7 @@ def plotOneTask(taskName):
 
     optTimes = np.zeros((numTrajecs, OPTIMISERS_USED))
     costReductions = np.zeros((numTrajecs, OPTIMISERS_USED))
+    scaledCosts = np.zeros((numTrajecs, OPTIMISERS_USED))
     avgPercentageDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
     avgTimeGettingDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
     numIterations = np.zeros((numTrajecs, OPTIMISERS_USED))
@@ -247,6 +248,20 @@ def plotOneTask(taskName):
             avgTimeGettingDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 3]
             numIterations[i, j] = data[i + 2, (j * DATA_FIELDS) + 4]
 
+    # Format the cost reductions with reference to the baseline cost
+    for i in range(numTrajecs):
+        for j in range(OPTIMISERS_USED):
+            if j == 1:
+                print("--------------------------------------------------------")
+                print("index: " + str(i))
+                print("cost reduction of index: " + str(costReductions[i, j]))
+                print("cost reduction of baseline: " + str(costReductions[i, 0]))
+            scaledCosts[i, j] = -((costReductions[i, j] - costReductions[i, 0]) / costReductions[i, 0]) * 100
+
+            if j == 1:
+
+                print("cost reduction of index after scaling: " + str(scaledCosts[i, j]))
+
 
     fig, axes = plt.subplots(3, 1, figsize = (18,8))
     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
@@ -257,10 +272,10 @@ def plotOneTask(taskName):
     boxPlotTitle = "Cost Reduction against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Cost Reduction"
     orange = "#edb83b"
-    bp2 = box_plot(costReductions, orange, yAxisLabel, axes[1], labels)
+    bp2 = box_plot(scaledCosts, orange, yAxisLabel, axes[1], labels)
 
     boxPlotTitle = "Num iterations against interpolation methods " + "panda_pushing_clutter"
-    yAxisLabel = "Cost Reduction"
+    yAxisLabel = "Num Iterations"
     orange = "#edb83b"
     bp3 = box_plot(numIterations, orange, yAxisLabel, axes[2], labels)
 
@@ -290,7 +305,9 @@ def plotOneTask(taskName):
 def plotResults():
     # Load data into numpy array
 
-    taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
+    # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
+    # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
+    taskNames = ["panda_reaching2"]
 
     for i in range(len(taskNames)):
         plotOneTask(taskNames[i])

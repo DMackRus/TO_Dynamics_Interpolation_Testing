@@ -1,0 +1,9 @@
+cost derivs analytically
+dynamics derivs: dqveldq
+filtering not done
+jerk method - 40, 200, 0.01 - robot joints, 0.01 - pushed object, 0.02 for all other objects
+accel method same as jerk method.
+iterative error -  < 0.000001, > 0.5, average error < 0.002 minN = 40
+Both parallel bp and sequntial bp done
+All derivatives computed column by column.
+minIter = 3, maxIter = 20
