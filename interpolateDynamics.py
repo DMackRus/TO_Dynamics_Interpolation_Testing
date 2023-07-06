@@ -10,7 +10,7 @@ class interpolator():
     def __init__(self, task):
 
         startPath = "savedTrajecInfo/" + task + "/"
-        self.trajecNumber = 0
+        self.trajecNumber = 3
         
         pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
