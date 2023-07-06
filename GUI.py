@@ -117,13 +117,19 @@ class dynamicsGUI():
         self.entry_maxN.insert(0, "200")
         self.label_jerkSensitivity = tk.Label(self.AB_widgetsFrame, text="jerkSensitivity", width=settingsWidth)
         self.entry_jerkSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_jerkSensitivity.insert(0, "0.00015") 
+        self.entry_jerkSensitivity.insert(0, "0.005") 
         self.label_displayIndexRow = tk.Label(self.AB_widgetsFrame, text="displayIndexRow", width=settingsWidth)
         self.entry_displayIndexRow = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_displayIndexRow.insert(0, "0")
         self.label_displayIndexCol = tk.Label(self.AB_widgetsFrame, text="displayIndexCol", width=settingsWidth)
         self.entry_displayIndexCol = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_displayIndexCol.insert(0, "2")
+        self.label_acellSensitivity = tk.Label(self.AB_widgetsFrame, text="acellSensitivity", width=settingsWidth)
+        self.entry_acellSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_acellSensitivity.insert(0, "0.005")
+        self.label_iterativeErrorThreshold = tk.Label(self.AB_widgetsFrame, text="iterativeErrorThreshold", width=settingsWidth)
+        self.entry_iterativeErrorThreshold = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_iterativeErrorThreshold.insert(0, "0.005")
         self.button_evaluate = tk.Button(self.AB_widgetsFrame, text="Evaluate", command=self.displayMode_callback)
 
         self.button_MinN_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incMinN_callback)
@@ -134,6 +140,12 @@ class dynamicsGUI():
 
         self.button_jerkSens_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incJerkSens_callback)
         self.button_jerkSens_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decJerkSens_callback)
+
+        self.button_acellSens_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incAcellSens_callback)
+        self.button_acellSens_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decAcellSens_callback)
+
+        self.button_iterativeErrorThresh_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incIterativeError_callback)
+        self.button_iterativeErrorThresh_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decIterativeError_callback)
 
         self.button_displayIndexRow_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incdisplayIndexRow_callback)
         self.button_displayIndexRow_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decdisplayIndexRow_callback)
@@ -175,6 +187,16 @@ class dynamicsGUI():
         self.entry_jerkSensitivity.grid(row=5, column=1)
         self.button_jerkSens_inc.grid(row=5, column=2)
 
+        self.label_acellSensitivity.grid(row=6, columnspan = 3, sticky='EW')
+        self.button_acellSens_dec.grid(row=7, column=0)
+        self.entry_acellSensitivity.grid(row=7, column=1)
+        self.button_acellSens_inc.grid(row=7, column=2)
+
+        self.label_iterativeErrorThreshold.grid(row=8, columnspan = 3, sticky='EW')
+        self.button_iterativeErrorThresh_dec.grid(row=9, column=0)
+        self.entry_iterativeErrorThreshold.grid(row=9, column=1)
+        self.button_iterativeErrorThresh_inc.grid(row=9, column=2)
+
         self.label_displayIndexRow.grid(row=0, column=4, columnspan = 3, sticky='EW')
 
         self.button_displayIndexRow_dec.grid(row=1, column=4)
@@ -215,7 +237,6 @@ class dynamicsGUI():
         self.button_dofIndex_inc = tk.Button(self.state_widgetFrame, text="+", command=self.incDofIndex_callback)
         self.button_dofIndex_dec = tk.Button(self.state_widgetFrame, text="-", command=self.decDofIndex_callback)
 
-
         # make a list box with my state types
         #self.listbox_stateType = tk.Listbox(self.state_widgetFrame, width=settingsWidth)
         
@@ -251,7 +272,6 @@ class dynamicsGUI():
         self.entry_maxN.delete(0, END)
         self.entry_maxN.insert(0, val+1)
 
-
     def decMaxN_callback(self):
         val = int(self.entry_maxN.get())
         self.entry_maxN.delete(0, END)
@@ -266,6 +286,26 @@ class dynamicsGUI():
         val = float(self.entry_jerkSensitivity.get())
         self.entry_jerkSensitivity.delete(0, END)
         self.entry_jerkSensitivity.insert(0, str(val-0.0001))
+
+    def incAcellSens_callback(self):
+        val = float(self.entry_acellSensitivity.get())
+        self.entry_acellSensitivity.delete(0, END)
+        self.entry_acellSensitivity.insert(0, str(val+0.0001))
+    
+    def decAcellSens_callback(self):
+        val = float(self.entry_acellSensitivity.get())
+        self.entry_acellSensitivity.delete(0, END)
+        self.entry_acellSensitivity.insert(0, str(val-0.0001))
+
+    def incIterativeError_callback(self):
+        val = float(self.entry_iterativeErrorThreshold.get())
+        self.entry_iterativeErrorThreshold.delete(0, END)
+        self.entry_iterativeErrorThreshold.insert(0, str(val+0.0001))
+    
+    def decIterativeError_callback(self):
+        val = float(self.entry_iterativeErrorThreshold.get())
+        self.entry_iterativeErrorThreshold.delete(0, END)
+        self.entry_iterativeErrorThreshold.insert(0, str(val-0.0001))
 
     def incdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
@@ -410,10 +450,10 @@ class dynamicsGUI():
             highlightedIndices = np.copy(accelProfile[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
             # draw a horizontal line at y = jerk threshold
-            self.plot_trajecInfo.axhline(y=self.dynParams[2], color=self.yellow, linestyle='--')
-            self.plot_trajecInfo.axhline(y=-self.dynParams[2], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=self.dynParams[3], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=-self.dynParams[3], color=self.yellow, linestyle='--')
             # set y limits to be the same as jerk
-            self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
+            # self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Jerk
         elif(self.stateDisplayNumber == 3):
             self.plot_trajecInfo.plot(jerkProfile[:,displayDof], label='Jerk', color = self.black)
@@ -425,7 +465,7 @@ class dynamicsGUI():
             self.plot_trajecInfo.axhline(y=self.dynParams[2], color=self.yellow, linestyle='--')
             self.plot_trajecInfo.axhline(y=-self.dynParams[2], color=self.yellow, linestyle='--')
             # set y limits to be the same as jerk
-            self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
+            # self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Control
         elif(self.stateDisplayNumber == 4):
             self.plot_trajecInfo.plot(controls[:,displayDof], label='Control', color = self.black)
@@ -492,8 +532,9 @@ class dynamicsGUI():
 
         evalsString = "Evals: " + str(self.numEvals)
 
-        at = AnchoredText(evalsString,
-                    prop=dict(size=15), frameon=True, loc='lower right')
+        # Anchor text above plot - offset from plot by 10%
+        at = AnchoredText(evalsString, loc='upper left', prop=dict(size=8), frameon=True, bbox_to_anchor=(0.9, 1.1), bbox_transform=self.plot_AB.transAxes)
+        
         at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
         self.plot_AB.add_artist(at)
 
@@ -511,8 +552,10 @@ class dynamicsGUI():
         minN = int(self.entry_minN.get())
         maxN = int(self.entry_maxN.get())
         jerkSensitivity = float(self.entry_jerkSensitivity.get())
+        acellSensitivity = float(self.entry_acellSensitivity.get())
+        iterativeErrorThreshold = float(self.entry_iterativeErrorThreshold.get())
 
-        return [minN, maxN, jerkSensitivity]
+        return [minN, maxN, jerkSensitivity, acellSensitivity, iterativeErrorThreshold]
     
 if __name__ == "__main__":
     root = Tk()

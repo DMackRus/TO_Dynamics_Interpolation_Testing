@@ -10,7 +10,7 @@ class interpolator():
     def __init__(self, task):
 
         startPath = "savedTrajecInfo/" + task + "/"
-        self.trajecNumber = 3
+        self.trajecNumber = 5
         
         pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -203,9 +203,7 @@ class interpolator():
         keyPoints = [[],[],[],[]]
 
         keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
-        print("keyPoints_setInterval size: ", keyPoints_setInterval[0])
-        print("keyPoints_setInterval size: ", keyPoints_setInterval[1])
-        keyPoints_adaptiveJerk = self.keyPoints_adaptive_velocity(trajectoryStates, dynParameters)
+        keyPoints_adaptiveJerk = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters)
         keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
         keyPoints_iteratively = self.keyPoints_iteratively(trajectoryStates, dynParameters)
 
@@ -292,6 +290,102 @@ class interpolator():
         return keyPoints 
 
     
+    # def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
+    #     mainKeyPoints = [[] for x in range(self.dof)]
+    #     keyPoints = [[] for x in range(self.dof)]
+
+    #     for i in range(self.dof):
+    #         mainKeyPoints[i].append(0)
+
+    #     counterSinceLastEval = np.zeros((self.dof))
+    #     # outsideHysterisis = [False] * self.dof
+    #     # resetToZeroAddKeypoint = [False] * self.dof
+    #     # -1 is down, 0 is across and 1 is upwards
+    #     last_direction = [0] * self.dof
+
+    #     minN = int(dynParameters[0])
+    #     maxN = int(dynParameters[1])
+    #     jerkSensitivity = dynParameters[2]
+    #     # temp
+    #     # velGradCubeSensitivity = 0.0002
+
+    #     jerkProfile = self.calcJerkOverTrajectory(self.states[0])
+
+    #     for i in range(self.dof):
+    #         for j in range(1, len(jerkProfile)):
+
+    #             current_direction = jerkProfile[j, i] - jerkProfile[j-1, i]
+    #             # print(current_direction)
+    #             # if(current_direction > 0.0001):
+    #             #     current_direction = 1
+    #             # elif(current_direction < -0.0001):
+    #             #     current_direction = -1
+    #             # else:
+    #             #     current_direction = 0
+
+    #             change_in_direction = current_direction * last_direction[i]
+
+    #             if(change_in_direction <= -0.000000000002):
+    #                 mainKeyPoints[i].append(j)
+                    
+    #             last_direction[i] = current_direction
+
+
+    #             # if(outsideHysterisis[i] == True):
+    #             #     if(jerkProfile[j, i] < jerkSensitivity and jerkProfile[j, i] > -jerkSensitivity):
+    #             #         mainKeyPoints[i].append(j)
+    #             #         outsideHysterisis[i] = False
+    #             #         resetToZeroAddKeypoint[i] = True
+    #             #         counterSinceLastEval[i] = 0
+    #             #     else:
+    #             #         pass
+    #             #         # counterSinceLastEval[i] += 1
+    #             #         # if(counterSinceLastEval[i] >= minN):
+    #             #         #     mainKeyPoints[i].append(j)
+    #             #         #     counterSinceLastEval[i] = 0
+
+    #             # else:
+    #             #     if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
+    #             #         # keyPoints[i].append(j-5)
+    #             #         if(mainKeyPoints[i][-1] != j-1):
+    #             #             mainKeyPoints[i].append(j-1)
+    #             #         mainKeyPoints[i].append(j)
+    #             #         outsideHysterisis[i] = True
+    #             #         resetToZeroAddKeypoint[i] = False
+    #             #         counterSinceLastEval[i] = 0
+
+    #             #     if(resetToZeroAddKeypoint[i] == True):
+    #             #         # print("reset to zero add keypoint")
+    #             #         if(jerkProfile[j, i] < 0.000001 and jerkProfile[j, i] > -0.000001):
+    #             #             mainKeyPoints[i].append(j)
+    #             #             resetToZeroAddKeypoint[i] = False
+    #             #             counterSinceLastEval[i] = 0
+
+    #             #     if(counterSinceLastEval[i] >= maxN):
+    #             #         mainKeyPoints[i].append(j)
+    #             #         counterSinceLastEval[i] = 0
+
+    #             #     counterSinceLastEval[i] = counterSinceLastEval[i] + 1
+
+
+    #     for i in range(self.dof):
+    #         for j in range(len(mainKeyPoints[i])):
+    #             if(j == 0):
+    #                 keyPoints[i].append(mainKeyPoints[i][j])
+    #             else:
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 15)
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 10)
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 5)
+    #                 keyPoints[i].append(mainKeyPoints[i][j])
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 5)
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 10)
+    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 15)
+
+    #     for i in range(self.dof):
+    #         keyPoints[i].append(self.trajecLength - 1)
+        
+    #     return keyPoints 
+
     def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
         mainKeyPoints = [[] for x in range(self.dof)]
         keyPoints = [[] for x in range(self.dof)]
@@ -300,10 +394,8 @@ class interpolator():
             mainKeyPoints[i].append(0)
 
         counterSinceLastEval = np.zeros((self.dof))
-        # outsideHysterisis = [False] * self.dof
-        # resetToZeroAddKeypoint = [False] * self.dof
-        # -1 is down, 0 is across and 1 is upwards
-        last_direction = [0] * self.dof
+        outsideHysterisis = [False] * self.dof
+        resetToZeroAddKeypoint = [False] * self.dof
 
         minN = int(dynParameters[0])
         maxN = int(dynParameters[1])
@@ -315,23 +407,6 @@ class interpolator():
 
         for i in range(self.dof):
             for j in range(1, len(jerkProfile)):
-
-                current_direction = jerkProfile[j, i] - jerkProfile[j-1, i]
-                # print(current_direction)
-                # if(current_direction > 0.0001):
-                #     current_direction = 1
-                # elif(current_direction < -0.0001):
-                #     current_direction = -1
-                # else:
-                #     current_direction = 0
-
-                change_in_direction = current_direction * last_direction[i]
-
-                if(change_in_direction <= -0.000000000002):
-                    mainKeyPoints[i].append(j)
-                    
-                last_direction[i] = current_direction
-
 
                 # if(outsideHysterisis[i] == True):
                 #     if(jerkProfile[j, i] < jerkSensitivity and jerkProfile[j, i] > -jerkSensitivity):
@@ -369,6 +444,17 @@ class interpolator():
 
                 #     counterSinceLastEval[i] = counterSinceLastEval[i] + 1
 
+                if(counterSinceLastEval[i] >= minN):
+                    # print("jerk profile: " + str(jerkProfile[j, i]))
+                    if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
+                        mainKeyPoints[i].append(j)
+                        counterSinceLastEval[i] = 0
+                
+                if(counterSinceLastEval[i] >= maxN):
+                    mainKeyPoints[i].append(j)
+                    counterSinceLastEval[i] = 0
+
+                counterSinceLastEval[i] = counterSinceLastEval[i] + 1
 
         for i in range(self.dof):
             for j in range(len(mainKeyPoints[i])):
@@ -388,94 +474,6 @@ class interpolator():
         
         return keyPoints 
 
-    # def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
-    #     mainKeyPoints = [[] for x in range(self.dof)]
-    #     keyPoints = [[] for x in range(self.dof)]
-
-    #     for i in range(self.dof):
-    #         mainKeyPoints[i].append(0)
-
-    #     counterSinceLastEval = np.zeros((self.dof))
-    #     outsideHysterisis = [False] * self.dof
-    #     resetToZeroAddKeypoint = [False] * self.dof
-
-    #     minN = int(dynParameters[0])
-    #     maxN = int(dynParameters[1])
-    #     jerkSensitivity = dynParameters[2]
-    #     # temp
-    #     # velGradCubeSensitivity = 0.0002
-
-    #     jerkProfile = self.calcJerkOverTrajectory(self.states[0])
-
-    #     for i in range(self.dof):
-    #         for j in range(1, len(jerkProfile)):
-
-    #             if(outsideHysterisis[i] == True):
-    #                 if(jerkProfile[j, i] < jerkSensitivity and jerkProfile[j, i] > -jerkSensitivity):
-    #                     mainKeyPoints[i].append(j)
-    #                     outsideHysterisis[i] = False
-    #                     resetToZeroAddKeypoint[i] = True
-    #                     counterSinceLastEval[i] = 0
-    #                 else:
-    #                     pass
-    #                     # counterSinceLastEval[i] += 1
-    #                     # if(counterSinceLastEval[i] >= minN):
-    #                     #     mainKeyPoints[i].append(j)
-    #                     #     counterSinceLastEval[i] = 0
-
-    #             else:
-    #                 if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
-    #                     # keyPoints[i].append(j-5)
-    #                     if(mainKeyPoints[i][-1] != j-1):
-    #                         mainKeyPoints[i].append(j-1)
-    #                     mainKeyPoints[i].append(j)
-    #                     outsideHysterisis[i] = True
-    #                     resetToZeroAddKeypoint[i] = False
-    #                     counterSinceLastEval[i] = 0
-
-    #                 if(resetToZeroAddKeypoint[i] == True):
-    #                     # print("reset to zero add keypoint")
-    #                     if(jerkProfile[j, i] < 0.000001 and jerkProfile[j, i] > -0.000001):
-    #                         mainKeyPoints[i].append(j)
-    #                         resetToZeroAddKeypoint[i] = False
-    #                         counterSinceLastEval[i] = 0
-
-    #                 if(counterSinceLastEval[i] >= maxN):
-    #                     mainKeyPoints[i].append(j)
-    #                     counterSinceLastEval[i] = 0
-
-    #                 counterSinceLastEval[i] = counterSinceLastEval[i] + 1
-
-    #             # if(counterSinceLastEval[i] >= minN):
-    #             #     # print("jerk profile: " + str(jerkProfile[j, i]))
-    #             #     if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
-    #             #         keyPoints[i].append(j)
-    #             #         counterSinceLastEval[i] = 0
-                
-    #             # if(counterSinceLastEval[i] >= maxN):
-    #             #     keyPoints[i].append(j)
-    #             #     counterSinceLastEval[i] = 0
-
-    #             # counterSinceLastEval[i] = counterSinceLastEval[i] + 1
-
-    #     for i in range(self.dof):
-    #         for j in range(len(mainKeyPoints[i])):
-    #             if(j == 0):
-    #                 keyPoints[i].append(mainKeyPoints[i][j])
-    #             else:
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 15)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 10)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 5)
-    #                 keyPoints[i].append(mainKeyPoints[i][j])
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 5)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 10)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 15)
-
-    #     for i in range(self.dof):
-    #         keyPoints[i].append(self.trajecLength - 1)
-        
-    #     return keyPoints 
-
     def keyPoints_adaptiveAccel(self, trajectoryStates, dynParameters):
         keyPoints = [[] for x in range(self.dof)]
 
@@ -486,7 +484,7 @@ class interpolator():
 
         minN = int(dynParameters[0])
         maxN = int(dynParameters[1])
-        accelSensitivty = dynParameters[2]
+        accelSensitivty = dynParameters[3]
         # temp
         # velGradCubeSensitivity = 0.0002
 
@@ -589,7 +587,8 @@ class interpolator():
 
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
-        if(meanSqDiff < 0.02):
+
+        if(meanSqDiff < self.dynParams[4]):
             approximationGood = True
 
         return approximationGood, midIndex
