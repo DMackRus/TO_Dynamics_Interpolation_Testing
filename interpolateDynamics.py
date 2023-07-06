@@ -52,7 +52,7 @@ class interpolator():
         print("num_ctrl is: " + str(self.num_ctrl))
         print("trajec length " + str(self.trajecLength))    
 
-        if(task == 2):
+        if(1):
             T = 5.0         # Sample Period
             fs = 100.0      # sample rate, Hz
             cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
