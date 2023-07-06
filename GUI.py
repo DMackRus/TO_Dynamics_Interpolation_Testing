@@ -91,10 +91,10 @@ class dynamicsGUI():
         self.canvas_AB.get_tk_widget().grid(row=0, column=0)
         self.canvas_trajecInfo.get_tk_widget().grid(row=0, column=1)
 
-        toolbar = NavigationToolbar2Tk(self.canvas_trajecInfo,
-                                    self.master)
+        # toolbar = NavigationToolbar2Tk(self.canvas_trajecInfo,
+        #                             self.master)
         # toolbar.grid(row=1, column=0)
-        toolbar.update()
+        # toolbar.update()
 
         # # creating the Matplotlib toolbar
         
@@ -152,6 +152,9 @@ class dynamicsGUI():
         self.entry_tasks.insert(0, self.taskNames[0])
         self.button_tasks = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
 
+        self.showFilter = 0
+        self.check_filterShow = tk.Checkbutton(self.AB_widgetsFrame, text='Show filtered value', command=self.check_filterShow_callback)
+
         # ------------------------------------------------------------------------------------------------------------------------
 
         self.label_minN.grid(row=0, column=0, columnspan = 3, sticky='EW')
@@ -196,6 +199,8 @@ class dynamicsGUI():
         self.entry_tasks.grid(row=1, column=10, columnspan = 3, sticky='EW')
         self.button_tasks.grid(row=2, column=10, columnspan = 3, sticky='EW')
 
+        self.check_filterShow.grid(row=3, column=10, columnspan = 3, sticky='EW')
+
         # ------ state widgets ------
         #label for state type
         self.label_stateType = tk.Label(self.state_widgetFrame, text="state type", width=settingsWidth)
@@ -225,6 +230,10 @@ class dynamicsGUI():
         self.button_dofIndex_inc.grid(row = 3, column = 2)
 
     # ------ callback functions ------
+
+    def check_filterShow_callback(self):
+        self.showFilter = 1 - self.showFilter
+        self.updatePlot_derivatives()
 
     def incMinN_callback(self):
         val = int(self.entry_minN.get())
@@ -377,34 +386,51 @@ class dynamicsGUI():
         self.plot_trajecInfo.clear()
         displayDof = int(self.entry_dofIndex.get())
 
-        displayKeypoints = self.keyPoints[self.interpTypeNum]
-        displayKeypoints = displayKeypoints[displayDof]
-        print("display key points length: ", len(displayKeypoints))
         highlightedIndices = []
         
         #Position
         if(self.stateDisplayNumber == 0):
             self.plot_trajecInfo.plot(states[:,displayDof], label='Position', color = self.black)
+            displayKeypoints = self.keyPoints[self.interpTypeNum]
+            displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(states[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         #Velocity
         elif(self.stateDisplayNumber == 1):
             self.plot_trajecInfo.plot(states[:,displayDof+self.numDOFs], label='Velocity', color = self.black)
+            displayKeypoints = self.keyPoints[self.interpTypeNum]
+            displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(states[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof + self.numDOFs], s=10, color = self.yellow, zorder=10)
         #Acceleration
         elif(self.stateDisplayNumber == 2):
             self.plot_trajecInfo.plot(accelProfile[:,displayDof], label='Acceleration', color = self.black)
+            displayKeypoints = self.keyPoints[1]
+            displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(accelProfile[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
+            # draw a horizontal line at y = jerk threshold
+            self.plot_trajecInfo.axhline(y=self.dynParams[2], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=-self.dynParams[2], color=self.yellow, linestyle='--')
+            # set y limits to be the same as jerk
+            self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Jerk
         elif(self.stateDisplayNumber == 3):
             self.plot_trajecInfo.plot(jerkProfile[:,displayDof], label='Jerk', color = self.black)
+            displayKeypoints = self.keyPoints[2]
+            displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(jerkProfile[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
+            # draw a horizontal line at y = jerk threshold
+            self.plot_trajecInfo.axhline(y=self.dynParams[2], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=-self.dynParams[2], color=self.yellow, linestyle='--')
+            # set y limits to be the same as jerk
+            self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Control
         elif(self.stateDisplayNumber == 4):
             self.plot_trajecInfo.plot(controls[:,displayDof], label='Control', color = self.black)
+            displayKeypoints = self.keyPoints[self.interpTypeNum]
+            displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(controls[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         
@@ -415,8 +441,6 @@ class dynamicsGUI():
     # ------------------ Update left plot - trajectory derivatives ---------------------
     def updatePlot_derivatives(self):
         dynParams = self.returnDynParams()
-        print("dynParams: ", dynParams)
-        print("self.dynParams: ", self.dynParams)
 
         # if dyn params are the same, don't recompute
         if dynParams == self.dynParams:
@@ -429,8 +453,6 @@ class dynamicsGUI():
 
         col = int(self.entry_displayIndexCol.get())
 
-        #Remove None values from list
-        # displayKeypoints = [x for x in self.keyPoints[self.interpTypeNum] if x is not None]
         displayKeypoints = self.keyPoints[self.interpTypeNum]
         displayKeypoints = displayKeypoints[col % self.numDOFs]
         highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
@@ -439,15 +461,34 @@ class dynamicsGUI():
 
         self.plot_AB.clear()
 
-        self.plot_AB.plot(self.trueTrajec[:,index], color = self.black, label='Ground truth')
-        self.plot_AB.plot(self.unfilteredTrajec[:,index], color = 'orange', label='Unfiltered')
+        if(self.showFilter):
+            print("showing filtered trajectory")
+            self.plot_AB.plot(self.trueTrajec[:,index], color = 'orange', label='Ground truth')
+
+        self.plot_AB.plot(self.unfilteredTrajec[:,index], color = self.black, label='Unfiltered')
 
         # Plot keypoints
         self.plot_AB.scatter(displayKeypoints, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
 
         self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = self.yellow, label = 'Interpolated')
-        # self.plot_AB.legend(loc='upper right')
+        self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
+
+        # set y lims
+        minVal = np.min(self.unfilteredTrajec[:,index])
+        maxVal = np.max(self.unfilteredTrajec[:,index])
+        # add ten percent to the max and min
+        minVal = minVal - abs(minVal * 0.1)
+        maxVal = maxVal + abs(maxVal * 0.1)
+        
+        print("minVal: ", minVal)
+        print("maxVal: ", maxVal)
+        # threshold = 0.2
+        # if minVal > -threshold:
+        #     minVal = -threshold
+        # if maxVal < threshold:
+        #     maxVal = threshold
+        self.plot_AB.set_ylim([minVal, maxVal])
 
         evalsString = "Evals: " + str(self.numEvals)
 

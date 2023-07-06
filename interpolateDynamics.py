@@ -199,6 +199,28 @@ class interpolator():
 
         return jerk
     
+    def generateKeypoints(self, trajectoryStates, trajectoryControls, dynParameters):
+        keyPoints = [[],[],[],[]]
+
+        keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
+        print("keyPoints_setInterval size: ", keyPoints_setInterval[0])
+        print("keyPoints_setInterval size: ", keyPoints_setInterval[1])
+        keyPoints_adaptiveJerk = self.keyPoints_adaptive_velocity(trajectoryStates, dynParameters)
+        keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
+        keyPoints_iteratively = self.keyPoints_iteratively(trajectoryStates, dynParameters)
+
+        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively))
+
+        # Stack the keypoints into one array
+        # keyPoints = np.vstack((keyPoints_setInterval, keyPoints_adaptiveJerk, keyPoints_adaptiveAccel, keyPoints_iteratively))
+        keyPoints[0] = keyPoints_setInterval
+        keyPoints[1] = keyPoints_adaptiveAccel
+        keyPoints[2] = keyPoints_adaptiveJerk
+        keyPoints[3] = keyPoints_iteratively
+
+
+        return keyPoints
+    
     def keyPoints_setInterval(self, dynParameters):
         keyPoints = [[] for x in range(self.dof)]
 
@@ -543,34 +565,6 @@ class interpolator():
             keyPoints[i] = list(dict.fromkeys(keyPoints[i]))
 
         return keyPoints
-    
-    def generateKeypoints(self, trajectoryStates, trajectoryControls, dynParameters):
-        keyPoints = [[],[],[],[]]
-
-        keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
-        print("keyPoints_setInterval size: ", keyPoints_setInterval[0])
-        print("keyPoints_setInterval size: ", keyPoints_setInterval[1])
-        keyPoints_adaptiveJerk = self.keyPoints_adaptive_velocity(trajectoryStates, dynParameters)
-        keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
-        keyPoints_iteratively = self.keyPoints_iteratively(trajectoryStates, dynParameters)
-
-        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively))
-
-        # Extend the shorter lists with None values
-        # keyPoints_setInterval.extend([None] * (max_length - len(keyPoints_setInterval)))
-        # keyPoints_adaptiveJerk.extend([None] * (max_length - len(keyPoints_adaptiveJerk)))
-        # keyPoints_adaptiveAccel.extend([None] * (max_length - len(keyPoints_adaptiveAccel)))
-        # keyPoints_iteratively.extend([None] * (max_length - len(keyPoints_iteratively)))
-
-        # Stack the keypoints into one array
-        # keyPoints = np.vstack((keyPoints_setInterval, keyPoints_adaptiveJerk, keyPoints_adaptiveAccel, keyPoints_iteratively))
-        keyPoints[0] = keyPoints_setInterval
-        keyPoints[1] = keyPoints_adaptiveAccel
-        keyPoints[2] = keyPoints_adaptiveJerk
-        keyPoints[3] = keyPoints_iteratively
-
-
-        return keyPoints
         
     def oneCheck(self, A_matrices, indexTuple, dofNum):
         approximationGood = False
@@ -582,7 +576,7 @@ class interpolator():
         startVals = A_matrices[startIndex,:]
         endVals = A_matrices[endIndex,:]
 
-        if((endIndex - startIndex) < 5):
+        if((endIndex - startIndex) < self.dynParams[0]):
             return True, midIndex
 
         trueMidVals = A_matrices[midIndex,:]
@@ -595,7 +589,7 @@ class interpolator():
 
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
-        if(meanSqDiff < 0.002):
+        if(meanSqDiff < 0.02):
             approximationGood = True
 
         return approximationGood, midIndex
@@ -621,7 +615,8 @@ class interpolator():
 
         for i in range(2):
             for j in range(self.dof):
-                sqDiff = (matrix1[offsets[i] + dofNum + (j * self.numStates)] - matrix2[offsets[i] + dofNum + (j * self.numStates)])**2
+                index = offsets[i] + dofNum + (j * self.numStates)
+                sqDiff = (matrix1[index] - matrix2[index])**2
                 counter = counter + 1
                 # if(sqDiff < 0.000001):
                 #     sqDiff = 0
