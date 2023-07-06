@@ -615,7 +615,7 @@ class interpolator():
         for i in range(2):
             for j in range(self.dof):
                 index = offsets[i] + dofNum + (j * self.numStates)
-                sqDiff = (matrix1[index] - matrix2[index])**2
+                sqDiff = abs(matrix1[index] - matrix2[index])
                 counter = counter + 1
                 # if(sqDiff < 0.000001):
                 #     sqDiff = 0

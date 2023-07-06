@@ -129,7 +129,7 @@ class dynamicsGUI():
         self.entry_acellSensitivity.insert(0, "0.005")
         self.label_iterativeErrorThreshold = tk.Label(self.AB_widgetsFrame, text="iterativeErrorThreshold", width=settingsWidth)
         self.entry_iterativeErrorThreshold = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_iterativeErrorThreshold.insert(0, "0.005")
+        self.entry_iterativeErrorThreshold.insert(0, "0.003")
         self.button_evaluate = tk.Button(self.AB_widgetsFrame, text="Evaluate", command=self.displayMode_callback)
 
         self.button_MinN_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incMinN_callback)
