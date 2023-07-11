@@ -301,20 +301,132 @@ def plotOneTask(taskName):
     # plt.savefig('data/resultsData/' + dataNumber + "/" + taskName + '_boxplots.png')
     plt.show()
 
+def plotOneResultMPC(taskName):
+    dataNumber = "0"
+
+    data = np.array([genfromtxt('data/resultsdatampc/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
+
+    file = open('data/resultsdatampc/'  + dataNumber + "/" + taskName + '_testingData.csv', "r")
+    headers = list(csv.reader(file, delimiter=","))
+    file.close()
+
+    DATA_FIELDS = 6 # sucess, finaldistance, execution time, optimisation time, avgpercent derivs, average time getting derivs
+    OPTIMISERS_USED = 6
+
+    lenHeaders = len(headers[0])
+    labels = []
+    for i in range(int(lenHeaders/DATA_FIELDS)):
+        labels.append(headers[0][i*DATA_FIELDS])
+
+    data = data[0]
+
+    numTrajecs = len(data) - 2
+    print("num trajecs: " + str(numTrajecs))
+
+    sucesses = np.zeros((OPTIMISERS_USED))
+    finalDistances = np.zeros((numTrajecs, OPTIMISERS_USED))
+    executionTimes = np.zeros((numTrajecs, OPTIMISERS_USED))
+    optimisationTimes = np.zeros((numTrajecs, OPTIMISERS_USED))
+    avgPercentDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
+    avgTimeGettingDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
+
+    for i in range(numTrajecs):
+        for j in range(OPTIMISERS_USED):
+
+            # sucesses[i, j] = str(headers[i + 2][(j * DATA_FIELDS)])
+            if(headers[i + 2][(j * DATA_FIELDS)] == "True"):
+                sucesses[j] += 1
+            finalDistances[i, j] = data[i + 2, (j * DATA_FIELDS) + 1]
+            executionTimes[i, j] = data[i + 2, (j * DATA_FIELDS) + 2]
+            optimisationTimes[i, j] = data[i + 2, (j * DATA_FIELDS) + 3]
+            avgTimeGettingDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 4]
+            avgPercentDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 5]
+            
+
+    fig, axes = plt.subplots(4, 1, figsize = (18,8))
+
+    #First plot should be a bar graph
+    barPlotTitle = "Sucesses - " + taskName
+    yAxisLabel = "Number of sucesses"
+    orange = "#edb83b"
+    # linSpace = np.linspace(0, OPTIMISERS_USED - 1, OPTIMISERS_USED)
+    bp0 = bar_plot(sucesses, orange, yAxisLabel, axes[0], labels)
+
+    boxPlotTitle = "Final distance: " + taskName
+    yAxisLabel = "Final distance to goal (m)"
+    orange = "#edb83b"
+    bp1 = box_plot(finalDistances, orange, yAxisLabel, axes[1], labels)
+
+    boxPlotTitle = "Execution times - " + taskName
+    yAxisLabel = "Execution time (s)"
+    orange = "#edb83b"
+    bp2 = box_plot(executionTimes, orange, yAxisLabel, axes[2], labels)
+
+    boxPlotTitle = "Optimisation time - " + taskName
+    yAxisLabel = "Optimisation time (s)"
+    orange = "#edb83b"
+    bp3 = box_plot(optimisationTimes, orange, yAxisLabel, axes[3], labels)
+
+
+    fig.suptitle(taskName + " - optimisation information (MPC)", fontsize=16)
+    # save the figure
+    plt.savefig('data/resultsdatampc/' + dataNumber + "/" + taskName + '_boxplots_timings.png')
+    plt.show()
+
+    fig, axes = plt.subplots(2, 1, figsize = (18,8))
+
+    boxPlotTitle = "avg percentage derivatives - " + taskName
+    yAxisLabel = "avg percentage derivatives"
+    orange = "#edb83b"
+    bp2 = box_plot(avgPercentDerivs, orange, yAxisLabel, axes[0], labels, True)
+
+    boxPlotTitle = "avg time getting derivatives - " + taskName
+    yAxisLabel = "avg time getting derivatives (ms)"
+    orange = "#edb83b"
+    bp3 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1], labels, True)
+
+
+    fig.suptitle(taskName + " - optimisation information (MPC)", fontsize=16)
+    # save the figure
+    plt.savefig('data/resultsdatampc/' + dataNumber + "/" + taskName + '_boxplots_derivs.png')
+    plt.show()
+
+
+
 
 def plotResults():
     # Load data into numpy array
 
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
-    taskNames = ["panda_reaching2"]
+    taskNames = ["panda_pushing_heavy_clutter"]
 
     for i in range(len(taskNames)):
-        plotOneTask(taskNames[i])
+        # plotOneTask(taskNames[i])
+        plotOneResultMPC(taskNames[i])
     
     # taskName = "doublePendulum"
 
-    
+def bar_plot(data, fill_color, yAxisTitle, ax, labels):
+    normalPosterColour = "#103755"
+    highlightPosterColor = "#EEF30D"
+
+    bp = ax.bar(labels, data, color=normalPosterColour)
+    ax.set_ylabel(yAxisTitle)
+    ax.set_xlabel("Optimiser")
+    ax.set_xticks(labels)
+    ax.set_xticklabels(labels)
+    ax.set_ylim([0, 100])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax.set_axisbelow(True)
+    ax.tick_params(axis='x', which='major', pad=15)
+    ax.tick_params(axis='y', which='major', pad=15)
+    #horizontal line at 0
+    ax.axhline(y=data[0], color= normalPosterColour, linewidth=1.5, alpha=0.5)
+    # ax.set_axisbelow(True)
+    # ax.yaxis.grid(True, linestyle='-', which='major', color='lightgr
 
 def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
     normalPosterColour = "#103755"
@@ -361,7 +473,7 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
 
         # index = index + 1   
 
-    labelSize = 13
+    labelSize = 11
 
     #ax = plt.gca()
     #ax.set_facecolor(backgroundColour)
@@ -380,55 +492,55 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
         
     return bp
 
-def K_matrices():
-    #Load some data into numpy array
-    K_normal = np.array([genfromtxt('K_data/K_normal.csv', delimiter = ',')])
-    K_parallel = np.array([genfromtxt('K_data/K_parallel.csv', delimiter = ',')])
+# def K_matrices():
+#     #Load some data into numpy array
+#     K_normal = np.array([genfromtxt('K_data/K_normal.csv', delimiter = ',')])
+#     K_parallel = np.array([genfromtxt('K_data/K_parallel.csv', delimiter = ',')])
 
-    K_normal = K_normal[0]
-    K_parallel = K_parallel[0]
+#     K_normal = K_normal[0]
+#     K_parallel = K_parallel[0]
 
-    index = 20
-    for i in range(100):
+#     index = 20
+#     for i in range(100):
 
-        index += 1
-        plt.plot(K_normal[:, index], label = "Normal")
-        plt.plot(K_parallel[:, index], label = "Parallel")
-        plt.legend()
-        plt.show()
+#         index += 1
+#         plt.plot(K_normal[:, index], label = "Normal")
+#         plt.plot(K_parallel[:, index], label = "Parallel")
+#         plt.legend()
+#         plt.show()
 
-def costMatrices():
-    path = "cost_data/"
+# def costMatrices():
+#     path = "cost_data/"
 
-    l_x = np.array([genfromtxt(path + 'l_x.csv', delimiter = ',')])
-    l_x = l_x[0]
+#     l_x = np.array([genfromtxt(path + 'l_x.csv', delimiter = ',')])
+#     l_x = l_x[0]
 
-    l_x_fd = np.array([genfromtxt(path + 'l_x_fd.csv', delimiter = ',')])
-    l_x_fd = l_x_fd[0]
+#     l_x_fd = np.array([genfromtxt(path + 'l_x_fd.csv', delimiter = ',')])
+#     l_x_fd = l_x_fd[0]
 
-    l_xx = np.array([genfromtxt(path + 'l_xx.csv', delimiter = ',')])
-    l_xx = l_xx[0]
+#     l_xx = np.array([genfromtxt(path + 'l_xx.csv', delimiter = ',')])
+#     l_xx = l_xx[0]
 
-    # index = 8
+#     # index = 8
 
-    # print(len(l_x[0]))
+#     # print(len(l_x[0]))
 
-    # for i in range(len(l_x[0]) - 1):
-    #     plt.plot(l_x[:, index], label = "l_x")
-    #     plt.plot(l_x_fd[:, index], label = "l_f_fd")
-    #     plt.legend()
-    #     plt.show()
-    #     index += 1
+#     # for i in range(len(l_x[0]) - 1):
+#     #     plt.plot(l_x[:, index], label = "l_x")
+#     #     plt.plot(l_x_fd[:, index], label = "l_f_fd")
+#     #     plt.legend()
+#     #     plt.show()
+#     #     index += 1
 
-    index = (9 * 2 * 9 * 2) - 1
+#     index = (9 * 2 * 9 * 2) - 1
 
-    print(len(l_xx[index]))
+#     print(len(l_xx[index]))
 
-    for i in range(len(l_x[0]) - 1):
-        plt.plot(l_xx[:, index], label = "l_xx")
-        plt.legend()
-        plt.show()
-        index += 1
+#     for i in range(len(l_x[0]) - 1):
+#         plt.plot(l_xx[:, index], label = "l_xx")
+#         plt.legend()
+#         plt.show()
+#         index += 1
 
 
     
