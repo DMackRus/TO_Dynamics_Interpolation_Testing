@@ -289,7 +289,7 @@ def plotOneTask(taskName):
     boxPlotTitle = "Average percentage calculated derivatives against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Average percentage calculate derivatives"
     orange = "#edb83b"
-    bp3 = box_plot(avgPercentageDerivs, orange, yAxisLabel, axes[0], labels, True)
+    bp3 = box_plot(avgPercentageDerivs, orange, yAxisLabel, axes[0], labels, False)
 
     boxPlotTitle = "average time getting derivatives against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Average time getting derivatives (s)"
@@ -302,7 +302,7 @@ def plotOneTask(taskName):
     plt.show()
 
 def plotOneResultMPC(taskName):
-    dataNumber = "0"
+    dataNumber = "2"
 
     data = np.array([genfromtxt('data/resultsdatampc/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
 
@@ -310,7 +310,7 @@ def plotOneResultMPC(taskName):
     headers = list(csv.reader(file, delimiter=","))
     file.close()
 
-    DATA_FIELDS = 6 # sucess, finaldistance, execution time, optimisation time, avgpercent derivs, average time getting derivs
+    DATA_FIELDS = 8 # sucess, finaldistance, execution time, optimisation time,average time getting derivs, avg time bp, avg time fp, avgpercent derivs, 
     OPTIMISERS_USED = 6
 
     lenHeaders = len(headers[0])
@@ -333,14 +333,12 @@ def plotOneResultMPC(taskName):
     for i in range(numTrajecs):
         for j in range(OPTIMISERS_USED):
 
-            # sucesses[i, j] = str(headers[i + 2][(j * DATA_FIELDS)])
-            if(headers[i + 2][(j * DATA_FIELDS)] == "True"):
-                sucesses[j] += 1
+            sucesses[j] += data[i + 2, (j * DATA_FIELDS)]
             finalDistances[i, j] = data[i + 2, (j * DATA_FIELDS) + 1]
             executionTimes[i, j] = data[i + 2, (j * DATA_FIELDS) + 2]
             optimisationTimes[i, j] = data[i + 2, (j * DATA_FIELDS) + 3]
             avgTimeGettingDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 4]
-            avgPercentDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 5]
+            avgPercentDerivs[i, j] = data[i + 2, (j * DATA_FIELDS) + 7]
             
 
     fig, axes = plt.subplots(4, 1, figsize = (18,8))
@@ -399,7 +397,7 @@ def plotResults():
 
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
-    taskNames = ["panda_pushing_heavy_clutter"]
+    taskNames = ["panda_pushing"]
 
     for i in range(len(taskNames)):
         # plotOneTask(taskNames[i])
