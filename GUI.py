@@ -16,11 +16,11 @@ class dynamicsGUI():
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
 
-        self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error"]
+        self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error", "mag_vel_change"]
         self.interpTypeNum = 2
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
         self.stateDisplayNumber = 1
-        self.stateDisplayDof = 2
+        self.stateDisplayDof = 1
 
         self.darkBlue = '#103755'
         self.lightBlue = '#90CBCB'
@@ -31,11 +31,10 @@ class dynamicsGUI():
 
         self.numEvals = 0
         self.dynParams = []
+        self.trajectoryNumber = 0
 
         self.setupGUI()
         self.load_callback()
-
-        self.trajectoryNumber = 0
 
         self.updatePlot_trajecInfo()
 
@@ -123,7 +122,7 @@ class dynamicsGUI():
         self.entry_displayIndexRow.insert(0, "0")
         self.label_displayIndexCol = tk.Label(self.AB_widgetsFrame, text="displayIndexCol", width=settingsWidth)
         self.entry_displayIndexCol = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_displayIndexCol.insert(0, "2")
+        self.entry_displayIndexCol.insert(0, "0")
         self.label_acellSensitivity = tk.Label(self.AB_widgetsFrame, text="acellSensitivity", width=settingsWidth)
         self.entry_acellSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_acellSensitivity.insert(0, "0.005")
@@ -158,10 +157,13 @@ class dynamicsGUI():
         self.button_interpType_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incInterpType_callback)
         self.button_interpType_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decInterpType_callback)
 
-        self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Tasks", width=int(settingsWidth * 2))
-        self.taskNames = ["panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
+        self.taskNames = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
         self.entry_tasks.insert(0, self.taskNames[0])
+        self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
+        self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_trajecNum.insert(0, "0")
         self.button_tasks = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
 
         self.showFilter = 0
@@ -219,9 +221,10 @@ class dynamicsGUI():
 
         self.label_tasks.grid(row=0, column=10, columnspan = 3, sticky='EW')
         self.entry_tasks.grid(row=1, column=10, columnspan = 3, sticky='EW')
-        self.button_tasks.grid(row=2, column=10, columnspan = 3, sticky='EW')
-
-        self.check_filterShow.grid(row=3, column=10, columnspan = 3, sticky='EW')
+        self.label_trajecNum.grid(row=2, column=10, columnspan = 3, sticky='EW')
+        self.entry_trajecNum.grid(row=3, column=10, columnspan = 3, sticky='EW')
+        self.button_tasks.grid(row=4, column=10, columnspan = 3, sticky='EW')
+        self.check_filterShow.grid(row=5, column=10, columnspan = 3, sticky='EW')
 
         # ------ state widgets ------
         #label for state type
@@ -405,7 +408,8 @@ class dynamicsGUI():
 
     def load_callback(self):
         self.task = self.entry_tasks.get()
-        self.interpolator = interpolator(self.task)
+        self.trajectoryNumber = int(self.entry_trajecNum.get())
+        self.interpolator = interpolator(self.task, self.trajectoryNumber)
         self.numDOFs = self.interpolator.dof
 
         self.dynParams = []
@@ -438,7 +442,7 @@ class dynamicsGUI():
         #Velocity
         elif(self.stateDisplayNumber == 1):
             self.plot_trajecInfo.plot(states[:,displayDof+self.numDOFs], label='Velocity', color = self.black)
-            displayKeypoints = self.keyPoints[self.interpTypeNum]
+            displayKeypoints = self.keyPoints[4]
             displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(states[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof + self.numDOFs], s=10, color = self.yellow, zorder=10)
@@ -490,6 +494,7 @@ class dynamicsGUI():
             self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = (int(self.entry_displayIndexRow.get()) * self.numDOFs * 2) + int(self.entry_displayIndexCol.get())
+        print(index)
 
         col = int(self.entry_displayIndexCol.get())
 
@@ -517,18 +522,10 @@ class dynamicsGUI():
         # set y lims
         minVal = np.min(self.unfilteredTrajec[:,index])
         maxVal = np.max(self.unfilteredTrajec[:,index])
-        # add ten percent to the max and min
-        minVal = minVal - abs(minVal * 0.1)
-        maxVal = maxVal + abs(maxVal * 0.1)
+
+        if (maxVal - minVal < 0.1):
+            self.plot_AB.set_ylim([minVal - 0.05, maxVal + 0.05])
         
-        print("minVal: ", minVal)
-        print("maxVal: ", maxVal)
-        # threshold = 0.2
-        # if minVal > -threshold:
-        #     minVal = -threshold
-        # if maxVal < threshold:
-        #     maxVal = threshold
-        self.plot_AB.set_ylim([minVal, maxVal])
 
         evalsString = "Evals: " + str(self.numEvals)
 

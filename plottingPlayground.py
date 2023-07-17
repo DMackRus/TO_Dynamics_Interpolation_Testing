@@ -205,9 +205,9 @@ def makeFilter():
 #     plt.savefig('cost_reductions.svg', format='svg', dpi=1200, transparent = True)
 #     plt.show()
 
-def plotOneTask(taskName):
+def plotOneTask(taskName, testNumber):
 
-    dataNumber = "6"
+    dataNumber = str(testNumber)
 
     data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
 
@@ -216,7 +216,7 @@ def plotOneTask(taskName):
     file.close()
 
     DATA_FIELDS = 5 # opt time, cost reduction, percentage derivs, time getting derivs, numIterations
-    OPTIMISERS_USED = 6
+    OPTIMISERS_USED = 4
 
     lenHeaders = len(headers[0])
     labels = []
@@ -398,10 +398,12 @@ def plotResults():
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
     taskNames = ["panda_pushing"]
+    # taskNames = ["doublePendulum"]
+    testNumber = 7
 
     for i in range(len(taskNames)):
-        # plotOneTask(taskNames[i])
-        plotOneResultMPC(taskNames[i])
+        plotOneTask(taskNames[i], testNumber)
+        # plotOneResultMPC(taskNames[i])
     
     # taskName = "doublePendulum"
 

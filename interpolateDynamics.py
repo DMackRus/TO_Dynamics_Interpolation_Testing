@@ -7,26 +7,36 @@ import math
 numTrajectoriesTest = 1
 
 class interpolator():
-    def __init__(self, task):
+    def __init__(self, task, trajecNumber):
 
         startPath = "savedTrajecInfo/" + task + "/"
-        self.trajecNumber = 5
+        self.task = task
+        self.trajecNumber = trajecNumber
+
+        self.testTrajectories_A = []
+        self.testTrajectories_B = []
+        self.states = []
+        self.controls = []
         
         pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
-
-        self.task = task
         self.trajecLength = rows 
 
-        self.testTrajectories = []
-        self.states = []
-        self.controls = []
+        for i in range(numTrajectoriesTest):
+            self.testTrajectories_A.append([])
+            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
+            self.testTrajectories_A[i] = tempPandas.to_numpy()
+
+        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/B_matrices.csv', header=None)
+        pandas = pandas[pandas.columns[:-1]]
+        rows, cols = pandas.shape
 
         for i in range(numTrajectoriesTest):
-            self.testTrajectories.append([])
+            self.testTrajectories_B.append([])
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.testTrajectories[i] = tempPandas.to_numpy()
+            self.testTrajectories_B[i] = tempPandas.to_numpy()
+
         pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
@@ -60,14 +70,14 @@ class interpolator():
             order = 2       # sin wave can be approx represented as quadratic
             n = int(T * fs) # total number of samples
 
-            self.filteredTrajectory = self.testTrajectories[0].copy()
+            self.filteredTrajectory = self.testTrajectories_A[0].copy()
 
-            for i in range(len(self.testTrajectories[0][0])):
+            for i in range(len(self.testTrajectories_A[0][0])):
                 
-                self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories[0][:,i].copy(), cutoff, nyq, order)
+                self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories_A[0][:,i].copy(), cutoff, nyq, order)
 
         else:
-            self.filteredTrajectory = self.testTrajectories[0].copy()
+            self.filteredTrajectory = self.testTrajectories_A[0].copy()
 
         self.dynParams = []
         self.error_dynLin = []
@@ -77,40 +87,43 @@ class interpolator():
         self.displayData_inteprolated = []
 
     def interpolateTrajectory(self, trajecNumber, dynParams):
-        rawTrajec = self.testTrajectories[trajecNumber]
+        numInterpolationMethods = 5
+
+        A_matrices = self.testTrajectories_A[trajecNumber]
+        B_matrices = self.testTrajectories_B[trajecNumber]
 
         self.dynParams = dynParams
-        keyPoints = self.generateKeypoints(rawTrajec, self.controls[0].copy(), self.dynParams.copy())
+        keyPoints = self.generateKeypoints(A_matrices, B_matrices, self.states[0].copy(), self.controls[0].copy(), self.dynParams.copy())
 
-        # print("keypoints generated")
-        # print(keyPoints)
-        #Im here
-
-        setIntervalTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[0].copy())
-        adaptiveJerkTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[1].copy())
-        adaptiveAccellTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[2].copy())
-        iterativeErrorTrajectory = self.generateLinInterpolation(rawTrajec, keyPoints[3].copy())
+        setIntervalTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[0].copy())
+        adaptiveJerkTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[1].copy())
+        adaptiveAccellTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[2].copy())
+        iterativeErrorTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[3].copy())
+        mag_vel_change_trajectory = self.generateLinInterpolation(A_matrices, keyPoints[4].copy())
 
         #store lininterp and quadratic interp into interpolateTrajectory
-        interpolatedTrajectory = np.zeros((4, self.trajecLength, len(rawTrajec[0])))
-        errors = np.zeros((4))
+        interpolatedTrajectory = np.zeros((numInterpolationMethods, self.trajecLength, len(A_matrices[0])))
+        errors = np.zeros((numInterpolationMethods))
         interpolatedTrajectory[0,:,:] = setIntervalTrajectory.copy()
         interpolatedTrajectory[1,:,:] = adaptiveJerkTrajectory.copy()
         interpolatedTrajectory[2,:,:] = adaptiveAccellTrajectory.copy()
         interpolatedTrajectory[3,:,:] = iterativeErrorTrajectory.copy()
+        interpolatedTrajectory[4,:,:] = mag_vel_change_trajectory.copy()
         
         if(self.task == 2):
             errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, setIntervalTrajectory)
             errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveJerkTrajectory)
             errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveAccellTrajectory)
             errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeErrorTrajectory)
+            errors[4] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, mag_vel_change_trajectory)
         else:
-            errors[0] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, setIntervalTrajectory)
-            errors[1] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, adaptiveJerkTrajectory)
-            errors[2] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, adaptiveAccellTrajectory)
-            errors[3] = self.calcMeanSumSquaredDiffForTrajec(rawTrajec, iterativeErrorTrajectory)
+            errors[0] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, setIntervalTrajectory)
+            errors[1] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveJerkTrajectory)
+            errors[2] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveAccellTrajectory)
+            errors[3] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, iterativeErrorTrajectory)
+            errors[4] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, mag_vel_change_trajectory)
 
-        return self.filteredTrajectory, interpolatedTrajectory, rawTrajec, errors, keyPoints
+        return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints
     
     def calcMeanSumSquaredDiffForTrajec(self, groundTruth, prediction):
 
@@ -199,13 +212,14 @@ class interpolator():
 
         return jerk
     
-    def generateKeypoints(self, trajectoryStates, trajectoryControls, dynParameters):
-        keyPoints = [[],[],[],[]]
+    def generateKeypoints(self, A_matrices, B_matrices, trajectoryStates, trajectoryControls, dynParameters):
+        keyPoints = [[],[],[],[],[]]
 
         keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
         keyPoints_adaptiveJerk = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters)
         keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
-        keyPoints_iteratively = self.keyPoints_iteratively(trajectoryStates, dynParameters)
+        keyPoints_iteratively = self.keyPoints_iteratively(A_matrices, dynParameters)
+        keyPoints_magVelChange = self.keyPoints_magVelChange(trajectoryStates, trajectoryControls, dynParameters)
 
         max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively))
 
@@ -215,6 +229,7 @@ class interpolator():
         keyPoints[1] = keyPoints_adaptiveAccel
         keyPoints[2] = keyPoints_adaptiveJerk
         keyPoints[3] = keyPoints_iteratively
+        keyPoints[4] = keyPoints_magVelChange
 
 
         return keyPoints
@@ -288,6 +303,56 @@ class interpolator():
             keyPoints[i].append(self.trajecLength - 1)
         
         return keyPoints 
+
+    def keyPoints_magVelChange(self, trajectoryStates, trajectoryControls, dynParameters):
+        minN = int(dynParameters[0])
+        maxN = int(dynParameters[1])
+        velChangeRequired = 2.0
+
+        keyPoints = [[] for x in range(self.dof)]
+        # currentVelChange = np.zeros((self.dof))
+        lastVelCounter = np.zeros((self.dof))
+        lastVelDirection = np.zeros((self.dof))
+
+        counter = np.zeros((self.dof))
+
+        for i in range(self.dof):
+            keyPoints[i].append(0)
+            lastVelCounter[i] = trajectoryStates[0, i + self.dof]
+
+        for i in range(self.dof):
+            for j in range(1, self.trajecLength):
+                counter[i] += 1
+
+                # velChange = trajectoryStates[j+1, i + self.dof] - trajectoryStates[j, i + self.dof]
+                # currentVelChange[i] += velChange
+                currentVelDirection = trajectoryStates[j, i + self.dof] - trajectoryStates[j-1, i + self.dof]
+                currentVelChange = trajectoryStates[j, i + self.dof] - lastVelCounter[i]
+
+                if(currentVelChange > velChangeRequired or currentVelChange < -velChangeRequired):
+                    keyPoints[i].append(j)
+                    lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                else:
+                    if(counter[i] >= maxN):
+                        keyPoints[i].append(j)
+                        counter[i] = 0
+                        lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                    else:
+                        if(currentVelDirection * lastVelDirection[i] < 0):
+                            keyPoints[i].append(j)
+                            lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                            counter[i] = 0
+
+                lastVelDirection[i] = currentVelDirection
+
+                
+
+
+        for i in range(self.dof):
+            if(keyPoints[i][-1] != self.trajecLength - 1):
+                keyPoints[i].append(self.trajecLength - 1)
+
+        return keyPoints
 
     
     # def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
@@ -598,9 +663,6 @@ class interpolator():
 
         for i in range(len(matrix1)):
             sqDiff = (matrix1[i] - matrix2[i])**2
-            if(sqDiff > 0.01):
-                #ignore large values
-                sqDiff = 0
 
             sumsqDiff = sumsqDiff + sqDiff
 
@@ -615,7 +677,7 @@ class interpolator():
         for i in range(2):
             for j in range(self.dof):
                 index = offsets[i] + dofNum + (j * self.numStates)
-                sqDiff = abs(matrix1[index] - matrix2[index])
+                sqDiff = math.sqrt(abs(matrix1[index] - matrix2[index]))
                 counter = counter + 1
                 # if(sqDiff < 0.000001):
                 #     sqDiff = 0
@@ -869,7 +931,19 @@ def ICRATemp():
     index += 1
 
 if __name__ == "__main__":
-    ICRATemp()
+    # ICRATemp()
+
+    # baseline
+    interp1 = interpolator("panda_pushing", 1000)
+
+    interp2 = interpolator("panda_pushing", 1002)
+
+    index = 99
+
+    for i in range(10):
+        plt.plot(interp1.testTrajectories_B[0][:,i])
+        plt.plot(interp2.testTrajectories_B[0][:,i])
+        plt.show()
 
     # myInterp = interpolator(0, 2)
 
