@@ -265,14 +265,14 @@ def plotOneTask(taskName, testNumber):
 
     fig, axes = plt.subplots(3, 1, figsize = (18,8))
     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
-    yAxisLabel = "Total optimisation time (s)"
+    yAxisLabel = "Total optimisation time (ms)"
     orange = "#edb83b"
     bp1 = box_plot(optTimes, orange, yAxisLabel, axes[0], labels)
 
     boxPlotTitle = "Cost Reduction against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Cost Reduction"
     orange = "#edb83b"
-    bp2 = box_plot(scaledCosts, orange, yAxisLabel, axes[1], labels)
+    bp2 = box_plot(scaledCosts, orange, yAxisLabel, axes[1], labels, baseline_yLine = True)
 
     boxPlotTitle = "Num iterations against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Num Iterations"
@@ -292,7 +292,7 @@ def plotOneTask(taskName, testNumber):
     bp3 = box_plot(avgPercentageDerivs, orange, yAxisLabel, axes[0], labels, False)
 
     boxPlotTitle = "average time getting derivatives against interpolation methods " + "panda_pushing_clutter"
-    yAxisLabel = "Average time getting derivatives (s)"
+    yAxisLabel = "Average time getting derivatives (ms)"
     orange = "#edb83b"
     bp4 = box_plot(avgTimeGettingDerivs, orange, yAxisLabel, axes[1], labels)
     fig.suptitle(taskName + " - derivative information", fontsize=16)
@@ -428,7 +428,7 @@ def bar_plot(data, fill_color, yAxisTitle, ax, labels):
     # ax.set_axisbelow(True)
     # ax.yaxis.grid(True, linestyle='-', which='major', color='lightgr
 
-def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
+def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False, baseline_yLine = False):
     normalPosterColour = "#103755"
     highlightPosterColor = "#EEF30D"
 
@@ -482,6 +482,9 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False):
     # ax.set(ylabel= yAxisTitle)
     ax.set_ylabel(yAxisTitle, fontsize=labelSize)
     # ax.set_title(yAxisTitle)
+
+    if(baseline_yLine):
+        ax.axhline(y=0, color=baselineColor, linewidth=1.5, alpha=0.5)
 
     xticks = []
     for i in range(len(labels)):

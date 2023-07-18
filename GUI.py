@@ -16,11 +16,25 @@ class dynamicsGUI():
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
 
+        
         self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error", "mag_vel_change"]
         self.interpTypeNum = 2
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
+
+        self.taskNames = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
+                                     [10, 200, 0.005, 0.005, 0.004], 
+                                     [10, 200, 0.005, 0.005, 0.005], 
+                                     [10, 200, 0.005, 0.005, 0.005], 
+                                     [10, 200, 0.005, 0.005, 0.005]]
+
+        # dictionary of starting dyn params
+        self.startingDynParamsDict = {}
+        for i in range(len(self.taskNames)):
+            self.startingDynParamsDict[self.taskNames[i]] = self.startingDynParams[i]
+
 
         self.darkBlue = '#103755'
         self.lightBlue = '#90CBCB'
@@ -158,7 +172,6 @@ class dynamicsGUI():
         self.button_interpType_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decInterpType_callback)
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
-        self.taskNames = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
         self.entry_tasks.insert(0, self.taskNames[0])
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
@@ -412,7 +425,20 @@ class dynamicsGUI():
         self.interpolator = interpolator(self.task, self.trajectoryNumber)
         self.numDOFs = self.interpolator.dof
 
+        defaultDynParamsForTask = self.startingDynParamsDict[self.task]
+        print(defaultDynParamsForTask)
+
         self.dynParams = []
+        self.entry_minN.delete(0, END)  
+        self.entry_minN.insert(0, str(defaultDynParamsForTask[0]))
+        self.entry_maxN.delete(0, END)
+        self.entry_maxN.insert(0, str(defaultDynParamsForTask[1]))
+        self.entry_jerkSensitivity.delete(0, END)
+        self.entry_jerkSensitivity.insert(0, float(defaultDynParamsForTask[2]))
+        self.entry_acellSensitivity.delete(0, END)
+        self.entry_acellSensitivity.insert(0, float(defaultDynParamsForTask[3]))
+        self.entry_iterativeErrorThreshold.delete(0, END)
+        self.entry_iterativeErrorThreshold.insert(0, float(defaultDynParamsForTask[4]))
         self.updatePlot_derivatives()
         self.updatePlot_trajecInfo()
 

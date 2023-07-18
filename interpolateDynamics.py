@@ -221,7 +221,7 @@ class interpolator():
         keyPoints_iteratively = self.keyPoints_iteratively(A_matrices, dynParameters)
         keyPoints_magVelChange = self.keyPoints_magVelChange(trajectoryStates, trajectoryControls, dynParameters)
 
-        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively))
+        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively), len(keyPoints_magVelChange))
 
         # Stack the keypoints into one array
         # keyPoints = np.vstack((keyPoints_setInterval, keyPoints_adaptiveJerk, keyPoints_adaptiveAccel, keyPoints_iteratively))
@@ -331,16 +331,16 @@ class interpolator():
 
                 if(currentVelChange > velChangeRequired or currentVelChange < -velChangeRequired):
                     keyPoints[i].append(j)
-                    lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                    lastVelCounter[i] = trajectoryStates[j, i + self.dof]
                 else:
                     if(counter[i] >= maxN):
                         keyPoints[i].append(j)
                         counter[i] = 0
-                        lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                        lastVelCounter[i] = trajectoryStates[j, i + self.dof]
                     else:
                         if(currentVelDirection * lastVelDirection[i] < 0):
                             keyPoints[i].append(j)
-                            lastVelCounter[i] = trajectoryStates[j+1, i + self.dof]
+                            lastVelCounter[i] = trajectoryStates[j, i + self.dof]
                             counter[i] = 0
 
                 lastVelDirection[i] = currentVelDirection
@@ -677,7 +677,7 @@ class interpolator():
         for i in range(2):
             for j in range(self.dof):
                 index = offsets[i] + dofNum + (j * self.numStates)
-                sqDiff = math.sqrt(abs(matrix1[index] - matrix2[index]))
+                sqDiff = (matrix1[index] - matrix2[index]) ** 2
                 counter = counter + 1
                 # if(sqDiff < 0.000001):
                 #     sqDiff = 0
