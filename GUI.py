@@ -579,7 +579,7 @@ class dynamicsGUI():
 
         dynParams = [None] * len(self.interpolationTypes)
         for i in range(len(self.interpolationTypes)):
-            dynParams[i] = derivative_interpolator(self.interpolationTypes[i], minN, maxN, acellSensitivity, jerkSensitivity, iterativeErrorThreshold)
+            dynParams[i] = derivative_interpolator(self.interpolationTypes[i], minN, maxN, acellSensitivity, jerkSensitivity, iterativeErrorThreshold, 2)
 
         return dynParams
     

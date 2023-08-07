@@ -15,6 +15,7 @@ class derivative_interpolator():
     acellThreshold: float
     jerkThreshold: float
     iterative_error_threshold: float
+    vel_change_required: float
 
 class interpolator():
     def __init__(self, task, trajecNumber):
@@ -103,33 +104,9 @@ class interpolator():
         for i in range(len(self.dynParams)):
             all_interpolations.append(self.generateLinInterpolation(A_matrices, keyPoints[i].copy()))
 
-        # setIntervalTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[0].copy())
-        # adaptiveJerkTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[1].copy())
-        # adaptiveAccellTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[2].copy())
-        # iterativeErrorTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[3].copy())
-        # mag_vel_change_trajectory = self.generateLinInterpolation(A_matrices, keyPoints[4].copy())
-
         #store lininterp and quadratic interp into interpolateTrajectory
         interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, len(A_matrices[0])))
         errors = np.zeros((len(self.dynParams)))
-        # interpolatedTrajectory[0,:,:] = setIntervalTrajectory.copy()
-        # interpolatedTrajectory[1,:,:] = adaptiveJerkTrajectory.copy()
-        # interpolatedTrajectory[2,:,:] = adaptiveAccellTrajectory.copy()
-        # interpolatedTrajectory[3,:,:] = iterativeErrorTrajectory.copy()
-        # interpolatedTrajectory[4,:,:] = mag_vel_change_trajectory.copy()
-        
-        # if(self.task == 2):
-        #     errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, setIntervalTrajectory)
-        #     errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveJerkTrajectory)
-        #     errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveAccellTrajectory)
-        #     errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeErrorTrajectory)
-        #     errors[4] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, mag_vel_change_trajectory)
-        # else:
-        #     errors[0] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, setIntervalTrajectory)
-        #     errors[1] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveJerkTrajectory)
-        #     errors[2] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveAccellTrajectory)
-        #     errors[3] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, iterativeErrorTrajectory)
-        #     errors[4] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, mag_vel_change_trajectory)
 
         for i in range(len(self.dynParams)):
             interpolatedTrajectory[i,:,:] = all_interpolations[i].copy()
@@ -242,21 +219,6 @@ class interpolator():
             else: 
                 print("keypoint method not found")
 
-        # keyPoints_setInterval = self.keyPoints_setInterval(dynParameters[0])
-        # keyPoints_adaptiveJerk = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters[1])
-        # keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters[2])
-        # keyPoints_iteratively = self.keyPoints_iteratively(A_matrices, dynParameters[2])
-        # keyPoints_magVelChange = self.keyPoints_magVelChange(trajectoryStates, trajectoryControls, dynParameters[3])
-
-        # max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively), len(keyPoints_magVelChange))
-
-        # Stack the keypoints into one array
-        # keyPoints[0] = keyPoints_setInterval
-        # keyPoints[1] = keyPoints_adaptiveAccel
-        # keyPoints[2] = keyPoints_adaptiveJerk
-        # keyPoints[3] = keyPoints_iteratively
-        # keyPoints[4] = keyPoints_magVelChange
-
         return keyPoints
     
     def keyPoints_setInterval(self, dynParameters):
@@ -332,7 +294,8 @@ class interpolator():
     def keyPoints_magVelChange(self, trajectoryStates, trajectoryControls, dynParameters):
         minN = dynParameters.minN
         maxN = dynParameters.maxN
-        velChangeRequired = 2.0
+        # velChangeRequired = 2.0
+        velChangeRequired = dynParameters.vel_change_required
 
         keyPoints = [[] for x in range(self.dof)]
         # currentVelChange = np.zeros((self.dof))
