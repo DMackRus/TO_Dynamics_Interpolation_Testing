@@ -15,9 +15,8 @@ class dynamicsGUI():
         self.master.geometry("1400x700")
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
-
         
-        self.interpolationTypes = ["setInterval", "adaptive_accel", "adaptive_jerk", "iterative_error", "mag_vel_change"]
+        self.interpolationTypes = ["setInterval", "adaptiveAccel", "adaptiveJerk", "iterativeError", "magVelChange"]
         self.interpTypeNum = 2
         self.stateTypes = ["Position", "Velocity", "Acceleration", "Jerk", "Control"]
         self.stateDisplayNumber = 1
@@ -480,8 +479,8 @@ class dynamicsGUI():
             highlightedIndices = np.copy(accelProfile[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
             # draw a horizontal line at y = jerk threshold
-            self.plot_trajecInfo.axhline(y=self.dynParams[3], color=self.yellow, linestyle='--')
-            self.plot_trajecInfo.axhline(y=-self.dynParams[3], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=self.dynParams[3].acellThreshold, color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=-self.dynParams[3].acellThreshold, color=self.yellow, linestyle='--')
             # set y limits to be the same as jerk
             # self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Jerk
@@ -492,8 +491,8 @@ class dynamicsGUI():
             highlightedIndices = np.copy(jerkProfile[displayKeypoints, ])
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
             # draw a horizontal line at y = jerk threshold
-            self.plot_trajecInfo.axhline(y=self.dynParams[2], color=self.yellow, linestyle='--')
-            self.plot_trajecInfo.axhline(y=-self.dynParams[2], color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=self.dynParams[2].jerkThreshold, color=self.yellow, linestyle='--')
+            self.plot_trajecInfo.axhline(y=-self.dynParams[2].jerkThreshold, color=self.yellow, linestyle='--')
             # set y limits to be the same as jerk
             # self.plot_trajecInfo.set_ylim([-self.dynParams[2] * 2, self.dynParams[2] * 2])
         #Control
@@ -578,7 +577,11 @@ class dynamicsGUI():
         acellSensitivity = float(self.entry_acellSensitivity.get())
         iterativeErrorThreshold = float(self.entry_iterativeErrorThreshold.get())
 
-        return [minN, maxN, jerkSensitivity, acellSensitivity, iterativeErrorThreshold]
+        dynParams = [None] * len(self.interpolationTypes)
+        for i in range(len(self.interpolationTypes)):
+            dynParams[i] = derivative_interpolator(self.interpolationTypes[i], minN, maxN, acellSensitivity, jerkSensitivity, iterativeErrorThreshold)
+
+        return dynParams
     
 if __name__ == "__main__":
     root = Tk()
