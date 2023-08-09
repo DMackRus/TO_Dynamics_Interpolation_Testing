@@ -3,8 +3,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import butter,filtfilt
 import math
+from dataclasses import dataclass
 
 numTrajectoriesTest = 1
+
+@dataclass
+class derivative_interpolator():
+    keyPoint_method: str
+    minN: int
+    maxN: int
+    acellThreshold: float
+    jerkThreshold: float
+    iterative_error_threshold: float
+    vel_change_required: float
 
 class interpolator():
     def __init__(self, task, trajecNumber):
@@ -58,10 +69,6 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.controls[i] = tempPandas.to_numpy()
 
-        print("dof is: " + str(self.dof))
-        print("num_ctrl is: " + str(self.num_ctrl))
-        print("trajec length " + str(self.trajecLength))    
-
         if(1):
             T = 5.0         # Sample Period
             fs = 100.0      # sample rate, Hz
@@ -87,41 +94,23 @@ class interpolator():
         self.displayData_inteprolated = []
 
     def interpolateTrajectory(self, trajecNumber, dynParams):
-        numInterpolationMethods = 5
-
         A_matrices = self.testTrajectories_A[trajecNumber]
         B_matrices = self.testTrajectories_B[trajecNumber]
 
         self.dynParams = dynParams
-        keyPoints = self.generateKeypoints(A_matrices, B_matrices, self.states[0].copy(), self.controls[0].copy(), self.dynParams.copy())
+        keyPoints = self.generateKeypoints(A_matrices, B_matrices, self.states[trajecNumber].copy(), self.controls[trajecNumber].copy(), self.dynParams.copy())
 
-        setIntervalTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[0].copy())
-        adaptiveJerkTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[1].copy())
-        adaptiveAccellTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[2].copy())
-        iterativeErrorTrajectory = self.generateLinInterpolation(A_matrices, keyPoints[3].copy())
-        mag_vel_change_trajectory = self.generateLinInterpolation(A_matrices, keyPoints[4].copy())
+        all_interpolations = []
+        for i in range(len(self.dynParams)):
+            all_interpolations.append(self.generateLinInterpolation(A_matrices, keyPoints[i].copy()))
 
         #store lininterp and quadratic interp into interpolateTrajectory
-        interpolatedTrajectory = np.zeros((numInterpolationMethods, self.trajecLength, len(A_matrices[0])))
-        errors = np.zeros((numInterpolationMethods))
-        interpolatedTrajectory[0,:,:] = setIntervalTrajectory.copy()
-        interpolatedTrajectory[1,:,:] = adaptiveJerkTrajectory.copy()
-        interpolatedTrajectory[2,:,:] = adaptiveAccellTrajectory.copy()
-        interpolatedTrajectory[3,:,:] = iterativeErrorTrajectory.copy()
-        interpolatedTrajectory[4,:,:] = mag_vel_change_trajectory.copy()
-        
-        if(self.task == 2):
-            errors[0] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, setIntervalTrajectory)
-            errors[1] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveJerkTrajectory)
-            errors[2] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, adaptiveAccellTrajectory)
-            errors[3] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, iterativeErrorTrajectory)
-            errors[4] = self.calcMeanSumSquaredDiffForTrajec(self.filteredTrajectory, mag_vel_change_trajectory)
-        else:
-            errors[0] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, setIntervalTrajectory)
-            errors[1] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveJerkTrajectory)
-            errors[2] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, adaptiveAccellTrajectory)
-            errors[3] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, iterativeErrorTrajectory)
-            errors[4] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, mag_vel_change_trajectory)
+        interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, len(A_matrices[0])))
+        errors = np.zeros((len(self.dynParams)))
+
+        for i in range(len(self.dynParams)):
+            interpolatedTrajectory[i,:,:] = all_interpolations[i].copy()
+            errors[i] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, all_interpolations[i])
 
         return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints
     
@@ -213,24 +202,22 @@ class interpolator():
         return jerk
     
     def generateKeypoints(self, A_matrices, B_matrices, trajectoryStates, trajectoryControls, dynParameters):
-        keyPoints = [[],[],[],[],[]]
+        keyPoints = [None] * len(dynParameters)
 
-        keyPoints_setInterval = self.keyPoints_setInterval(dynParameters)
-        keyPoints_adaptiveJerk = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters)
-        keyPoints_adaptiveAccel = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters)
-        keyPoints_iteratively = self.keyPoints_iteratively(A_matrices, dynParameters)
-        keyPoints_magVelChange = self.keyPoints_magVelChange(trajectoryStates, trajectoryControls, dynParameters)
+        for i in range(len(dynParameters)):
 
-        max_length = max(len(keyPoints_setInterval), len(keyPoints_adaptiveJerk), len(keyPoints_adaptiveAccel), len(keyPoints_iteratively), len(keyPoints_magVelChange))
-
-        # Stack the keypoints into one array
-        # keyPoints = np.vstack((keyPoints_setInterval, keyPoints_adaptiveJerk, keyPoints_adaptiveAccel, keyPoints_iteratively))
-        keyPoints[0] = keyPoints_setInterval
-        keyPoints[1] = keyPoints_adaptiveAccel
-        keyPoints[2] = keyPoints_adaptiveJerk
-        keyPoints[3] = keyPoints_iteratively
-        keyPoints[4] = keyPoints_magVelChange
-
+            if(dynParameters[i].keyPoint_method =="setInterval"):
+                keyPoints[i] = self.keyPoints_setInterval(dynParameters[i])
+            elif(dynParameters[i].keyPoint_method =="adaptiveJerk"):
+                keyPoints[i] = self.keyPoints_adaptiveJerk(trajectoryStates, dynParameters[i])
+            elif(dynParameters[i].keyPoint_method =="adaptiveAccel"):
+                keyPoints[i] = self.keyPoints_adaptiveAccel(trajectoryStates, dynParameters[i])
+            elif(dynParameters[i].keyPoint_method =="iterativeError"):
+                keyPoints[i] = self.keyPoints_iteratively(A_matrices, dynParameters[i])
+            elif(dynParameters[i].keyPoint_method =="magVelChange"):
+                keyPoints[i] = self.keyPoints_magVelChange(trajectoryStates, trajectoryControls, dynParameters[i])
+            else: 
+                print("keypoint method not found")
 
         return keyPoints
     
@@ -240,7 +227,7 @@ class interpolator():
         for i in range(self.dof):
             keyPoints[i].append(0)
 
-        minN = int(dynParameters[0])
+        minN = dynParameters.minN
     
         for i in range(self.dof):
             counter = 0
@@ -305,9 +292,10 @@ class interpolator():
         return keyPoints 
 
     def keyPoints_magVelChange(self, trajectoryStates, trajectoryControls, dynParameters):
-        minN = int(dynParameters[0])
-        maxN = int(dynParameters[1])
-        velChangeRequired = 2.0
+        minN = dynParameters.minN
+        maxN = dynParameters.maxN
+        # velChangeRequired = 2.0
+        velChangeRequired = dynParameters.vel_change_required
 
         keyPoints = [[] for x in range(self.dof)]
         # currentVelChange = np.zeros((self.dof))
@@ -462,9 +450,9 @@ class interpolator():
         outsideHysterisis = [False] * self.dof
         resetToZeroAddKeypoint = [False] * self.dof
 
-        minN = int(dynParameters[0])
-        maxN = int(dynParameters[1])
-        jerkSensitivity = dynParameters[2]
+        minN = dynParameters.minN
+        maxN = dynParameters.maxN
+        jerkThreshold = dynParameters.jerkThreshold
         # temp
         # velGradCubeSensitivity = 0.0002
 
@@ -511,7 +499,7 @@ class interpolator():
 
                 if(counterSinceLastEval[i] >= minN):
                     # print("jerk profile: " + str(jerkProfile[j, i]))
-                    if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
+                    if(jerkProfile[j, i] > jerkThreshold or jerkProfile[j, i] < -jerkThreshold):
                         mainKeyPoints[i].append(j)
                         counterSinceLastEval[i] = 0
                 
@@ -547,9 +535,9 @@ class interpolator():
 
         counterSinceLastEval = np.zeros((self.dof))
 
-        minN = int(dynParameters[0])
-        maxN = int(dynParameters[1])
-        accelSensitivty = dynParameters[3]
+        minN = dynParameters.minN
+        maxN = dynParameters.maxN
+        acellThreshold = dynParameters.acellThreshold
         # temp
         # velGradCubeSensitivity = 0.0002
 
@@ -559,7 +547,7 @@ class interpolator():
             for j in range(len(accelProfile)):
 
                 if(counterSinceLastEval[i] >= minN):
-                    if(accelProfile[j, i] > accelSensitivty or accelProfile[j, i] < -accelSensitivty):
+                    if(accelProfile[j, i] > acellThreshold or accelProfile[j, i] < -acellThreshold):
                         keyPoints[i].append(j)
                         counterSinceLastEval[i] = 0
                 
@@ -583,6 +571,9 @@ class interpolator():
         # startInterval = int(self.trajecLength / 2)
         # numMaxBins = int((self.trajecLength / startInterval))
 
+        minN = dynParameters.minN
+        iter_error_thresh = dynParameters.iterative_error_threshold
+
         startIndex = 0
         endIndex = self.trajecLength - 1
 
@@ -599,7 +590,7 @@ class interpolator():
                 allChecksComplete = True
                 for j in range(len(listofIndicesCheck)):
 
-                    approximationGood, midIndex = self.oneCheck(trajectoryStates, listofIndicesCheck[j], i)
+                    approximationGood, midIndex = self.oneCheck(trajectoryStates, listofIndicesCheck[j], i, minN, iter_error_thresh)
 
                     if not approximationGood:
                         allChecksComplete = False
@@ -629,7 +620,7 @@ class interpolator():
 
         return keyPoints
         
-    def oneCheck(self, A_matrices, indexTuple, dofNum):
+    def oneCheck(self, A_matrices, indexTuple, dofNum, minN, iter_error_thresh):
         approximationGood = False
 
         startIndex = indexTuple[0]
@@ -639,7 +630,7 @@ class interpolator():
         startVals = A_matrices[startIndex,:]
         endVals = A_matrices[endIndex,:]
 
-        if((endIndex - startIndex) < self.dynParams[0]):
+        if((endIndex - startIndex) < minN):
             return True, midIndex
 
         trueMidVals = A_matrices[midIndex,:]
@@ -653,7 +644,7 @@ class interpolator():
         # 0.05 for reaching and pushing
         #~0.001 for pendulum
 
-        if(meanSqDiff < self.dynParams[4]):
+        if(meanSqDiff < iter_error_thresh):
             approximationGood = True
 
         return approximationGood, midIndex
