@@ -216,7 +216,7 @@ def plotOneTask(taskName, testNumber):
     file.close()
 
     DATA_FIELDS = 5 # opt time, cost reduction, percentage derivs, time getting derivs, numIterations
-    OPTIMISERS_USED = 5
+    OPTIMISERS_USED = 6
 
     lenHeaders = len(headers[0])
     labels = []
@@ -272,7 +272,7 @@ def plotOneTask(taskName, testNumber):
     boxPlotTitle = "Cost Reduction against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Cost Reduction"
     orange = "#edb83b"
-    bp2 = box_plot(scaledCosts, orange, yAxisLabel, axes[1], labels, baseline_yLine = True)
+    bp2 = box_plot(costReductions, orange, yAxisLabel, axes[1], labels, baseline_yLine = True)
 
     boxPlotTitle = "Num iterations against interpolation methods " + "panda_pushing_clutter"
     yAxisLabel = "Num Iterations"
@@ -395,9 +395,9 @@ def plotResults():
 
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
-    taskNames = ["panda_pushing_heavy_clutter"]
+    taskNames = ["panda_pushing"]
     # taskNames = ["doublePendulum"]
-    testNumber = 8
+    testNumber = 9
 
     for i in range(len(taskNames)):
         plotOneTask(taskNames[i], testNumber)

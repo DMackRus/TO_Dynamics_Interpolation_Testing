@@ -23,7 +23,7 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
                                      [10, 200, 0.005, 0.005, 0.005], 
@@ -173,7 +173,7 @@ class dynamicsGUI():
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
-        self.entry_tasks.insert(0, self.taskNames[0])
+        self.entry_tasks.insert(0, self.taskNames[1])
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
         self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_trajecNum.insert(0, "0")
