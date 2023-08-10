@@ -22,11 +22,14 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_clutter"]
+        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
                                      [10, 200, 0.005, 0.005, 0.005], 
                                      [10, 200, 0.005, 0.005, 0.005], 
+                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005]]
 
         # dictionary of starting dyn params
@@ -45,6 +48,9 @@ class dynamicsGUI():
         self.numEvals = 0
         self.dynParams = []
         self.trajectoryNumber = 0
+        self.dof_pos = 0
+        self.dof_vel = 0
+        self.num_ctrl = 0
 
         self.setupGUI()
         self.load_callback()
@@ -172,10 +178,10 @@ class dynamicsGUI():
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
-        self.entry_tasks.insert(0, self.taskNames[1])
+        self.entry_tasks.insert(0, self.taskNames[6]) # 6 kinova side
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
         self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_trajecNum.insert(0, "0")
+        self.entry_trajecNum.insert(1, "0")
         self.button_tasks = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
 
         self.showFilter = 0
@@ -325,8 +331,8 @@ class dynamicsGUI():
     def incdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
         val = val + 1
-        if val > self.numDOFs - 1:
-            val = self.numDOFs - 1
+        if val > self.dof_vel - 1:
+            val = self.dof_vel - 1
         self.entry_displayIndexRow.delete(0, END)
         self.entry_displayIndexRow.insert(0, val)
         self.updatePlot_derivatives()
@@ -343,8 +349,8 @@ class dynamicsGUI():
     def incdisplayIndexCol_callback(self):
         val = int(self.entry_displayIndexCol.get())
         val = val + 1
-        if val > (self.numDOFs * 2) - 1:
-            val = (self.numDOFs * 2) - 1
+        if val > (self.dof_pos + self.dof_vel) - 1:
+            val = (self.dof_pos + self.dof_vel) - 1
         self.entry_displayIndexCol.delete(0, END)
         self.entry_displayIndexCol.insert(0, val)
         self.updatePlot_derivatives()
@@ -395,8 +401,21 @@ class dynamicsGUI():
 
     def incDofIndex_callback(self):
         self.stateDisplayDof = self.stateDisplayDof + 1
-        if(self.stateDisplayDof > self.numDOFs - 1):
-            self.stateDisplayDof = self.numDOFs - 1
+
+        # positions
+        if(self.stateDisplayNumber == 0):
+            if(self.stateDisplayDof > self.dof_pos - 1):
+                self.stateDisplayDof = self.dof_pos - 1
+
+        # velocities, accelerations, jerks
+        elif(self.stateDisplayNumber >= 1 and self.stateDisplayNumber <= 3):
+            if(self.stateDisplayDof > self.dof_vel - 1):
+                self.stateDisplayDof = self.dof_vel - 1
+
+        # controls
+        elif(self.stateDisplayNumber == 4):
+            if(self.stateDisplayNumber > self.num_ctrl):
+                self.stateDisplayDof = self.num_ctrl
 
         self.entry_dofIndex.delete(0, END)
         self.entry_dofIndex.insert(0, self.stateDisplayDof)
@@ -422,10 +441,11 @@ class dynamicsGUI():
         self.task = self.entry_tasks.get()
         self.trajectoryNumber = int(self.entry_trajecNum.get())
         self.interpolator = interpolator(self.task, self.trajectoryNumber)
-        self.numDOFs = self.interpolator.dof
+        self.dof_pos = self.interpolator.dof_pos
+        self.dof_vel = self.interpolator.dof_vel
+        self.num_ctrl = self.interpolator.num_ctrl
 
         defaultDynParamsForTask = self.startingDynParamsDict[self.task]
-        print(defaultDynParamsForTask)
 
         self.dynParams = []
         self.entry_minN.delete(0, END)  
@@ -466,11 +486,11 @@ class dynamicsGUI():
             self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof], s=10, color = self.yellow, zorder=10)
         #Velocity
         elif(self.stateDisplayNumber == 1):
-            self.plot_trajecInfo.plot(states[:,displayDof+self.numDOFs], label='Velocity', color = self.black)
+            self.plot_trajecInfo.plot(states[:,displayDof+self.dof_pos], label='Velocity', color = self.black)
             displayKeypoints = self.keyPoints[4]
             displayKeypoints = displayKeypoints[displayDof]
             highlightedIndices = np.copy(states[displayKeypoints, ])
-            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof + self.numDOFs], s=10, color = self.yellow, zorder=10)
+            self.plot_trajecInfo.scatter(displayKeypoints, highlightedIndices[:, displayDof + self.dof_pos], s=10, color = self.yellow, zorder=10)
         #Acceleration
         elif(self.stateDisplayNumber == 2):
             self.plot_trajecInfo.plot(accelProfile[:,displayDof], label='Acceleration', color = self.black)
@@ -518,13 +538,13 @@ class dynamicsGUI():
             self.dynParams = dynParams
             self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
-        index = (int(self.entry_displayIndexRow.get()) * self.numDOFs * 2) + int(self.entry_displayIndexCol.get())
+        index = (int(self.entry_displayIndexRow.get()) * (self.dof_pos + self.dof_vel)) + int(self.entry_displayIndexCol.get())
         print(index)
 
         col = int(self.entry_displayIndexCol.get())
 
         displayKeypoints = self.keyPoints[self.interpTypeNum]
-        displayKeypoints = displayKeypoints[col % self.numDOFs]
+        displayKeypoints = displayKeypoints[col % self.dof_vel]
         highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
 
         self.numEvals = len(displayKeypoints)

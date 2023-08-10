@@ -20,7 +20,7 @@ class derivative_interpolator():
 class interpolator():
     def __init__(self, task, trajecNumber):
 
-        startPath = "savedTrajecInfo/" + task + "/"
+        startPath = "savedTrajecInfo/" + task
         self.task = task
         self.trajecNumber = trajecNumber
 
@@ -29,9 +29,18 @@ class interpolator():
         self.states = []
         self.controls = []
         
-        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/A_matrices.csv', header=None)
+        # Load meta data infomation
+        data = np.genfromtxt(startPath + "/meta_data.csv", delimiter=',')
+        self.dof_pos = int(data[0, 0])
+        self.dof_vel = int(data[1, 0])
+        self.num_ctrl = int(data[2, 0])
+        print(f'dof_pos: {self.dof_pos}, dof_vel: {self.dof_vel}, num_ctrl: {self.num_ctrl}')
+
+        
+        pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
+        print(f"shape from A matrices {pandas.shape}")
         self.trajecLength = rows 
 
         for i in range(numTrajectoriesTest):
@@ -39,8 +48,9 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.testTrajectories_A[i] = tempPandas.to_numpy()
 
-        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/B_matrices.csv', header=None)
+        pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
+        print(f"shape from b matrices {pandas.shape}")
         rows, cols = pandas.shape
 
         for i in range(numTrajectoriesTest):
@@ -48,26 +58,28 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.testTrajectories_B[i] = tempPandas.to_numpy()
 
-        pandas = pd.read_csv(startPath + str(self.trajecNumber) + '/states.csv', header=None)
+        pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
-        self.dof = int(cols/2)
-        self.numStates = self.dof * 2
+
+        self.numStates = self.dof_pos + self.dof_vel
         self.sizeOfAMatrix = self.numStates * self.numStates
 
         for i in range(numTrajectoriesTest):
             self.states.append([])
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.states[i] = tempPandas.to_numpy()
-        pandas = pd.read_csv(startPath + str(self.trajecNumber) +  '/controls.csv', header=None)
+        pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) +  '/controls.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
+        print(f'shapes from controls: {pandas.shape}')
         self.num_ctrl = cols
 
         for i in range(numTrajectoriesTest):
             self.controls.append([])
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.controls[i] = tempPandas.to_numpy()
+
 
         if(1):
             T = 5.0         # Sample Period
@@ -160,44 +172,41 @@ class interpolator():
         return self.jerkProfile, self.accelProfile, self.states[0].copy(), self.controls[0].copy()
 
     def calculateAccellerationOverTrajectory(self, trajectoryStates):
-        first_order_state_change = np.zeros((self.trajecLength - 1, self.numStates))
+        # state vector = self.dof_pos + self.dof_vel
+        acell = np.zeros((self.trajecLength - 1, self.dof_vel))
+
 
         for i in range(self.trajecLength - 1):
 
-            state1 = trajectoryStates[i,:].copy()
-            state2 = trajectoryStates[i+1,:].copy()
+            vel1 = trajectoryStates[i,self.dof_pos:].copy()
+            vel2 = trajectoryStates[i+1,self.dof_pos:].copy()
 
-            currentAccel = state2 - state1
+            currentAccel = vel2 - vel1
 
-            first_order_state_change[i,:] = currentAccel
+            acell[i,:] = currentAccel
 
-        accel = np.zeros((self.trajecLength - 2, self.dof))
-        for i in range(self.trajecLength - 2):
-            for j in range(self.dof):
-                accel[i,j] = first_order_state_change[i, j + self.dof]
-
-        return accel
+        return acell
 
     def calcJerkOverTrajectory(self, trajectoryStates):
-        second_order_state_change = np.zeros((self.trajecLength - 2, self.numStates))
+        jerk = np.zeros((self.trajecLength - 2, self.dof_vel))
 
         for i in range(self.trajecLength - 2):
 
-            state1 = trajectoryStates[i,:].copy()
-            state2 = trajectoryStates[i+1,:].copy()
-            state3 = trajectoryStates[i+2,:].copy()
+            state1 = trajectoryStates[i,self.dof_pos:].copy()
+            state2 = trajectoryStates[i+1,self.dof_pos:].copy()
+            state3 = trajectoryStates[i+2,self.dof_pos:].copy()
 
             accel1 = state3 - state2
             accel2 = state1 - state1
 
             currentJerk = accel2 - accel1
 
-            second_order_state_change[i,:] = currentJerk
+            jerk[i,:] = currentJerk
 
-        jerk = np.zeros((self.trajecLength - 2, self.dof))
-        for i in range(self.trajecLength - 2):
-            for j in range(self.dof):
-                jerk[i,j] = second_order_state_change[i, j + self.dof]
+        # jerk = np.zeros((self.trajecLength - 2, self.dof_vel))
+        # for i in range(self.trajecLength - 2):
+        #     for j in range(self.dof_pos):
+        #         jerk[i,j] = second_order_state_change[i, j + self.dof_vel]
 
         return jerk
     
@@ -222,14 +231,14 @@ class interpolator():
         return keyPoints
     
     def keyPoints_setInterval(self, dynParameters):
-        keyPoints = [[] for x in range(self.dof)]
+        keyPoints = [[] for x in range(self.dof_pos)]
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             keyPoints[i].append(0)
 
         minN = dynParameters.minN
     
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             counter = 0
             for j in range(self.trajecLength - 1):
                 counter += 1
@@ -237,21 +246,21 @@ class interpolator():
                     counter = 0
                     keyPoints[i].append(j)
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             keyPoints[i].append(self.trajecLength - 1)
 
         return keyPoints 
     
     def keyPoints_adaptive_velocity(self, trajectoryStates, dynParameters):
-        mainKeyPoints = [[] for x in range(self.dof)]
-        keyPoints = [[] for x in range(self.dof)]
+        mainKeyPoints = [[] for x in range(self.dof_vel)]
+        keyPoints = [[] for x in range(self.dof_vel)]
 
-        last_direction = [0] * self.dof
+        last_direction = [0] * self.dof_vel
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             mainKeyPoints[i].append(0)
 
-        velProfile = self.states[0][:, self.dof:2*self.dof]
+        velProfile = self.states[0][:, self.dof_vel:2*self.dof_vel]
 
         direction_temp = []
 
@@ -263,7 +272,7 @@ class interpolator():
         # plt.show()
         # velProfile = self.calculateAccellerationOverTrajectory(self.states[0])
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             for j in range(1, len(velProfile)):
 
                 current_direction = velProfile[j, i] - velProfile[j-1, i]
@@ -279,14 +288,14 @@ class interpolator():
                     
                 last_direction[i] = current_direction
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             for j in range(len(mainKeyPoints[i])):
                 if(j == 0):
                     keyPoints[i].append(mainKeyPoints[i][j])
                 else:
                     keyPoints[i].append(mainKeyPoints[i][j])
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             keyPoints[i].append(self.trajecLength - 1)
         
         return keyPoints 
@@ -297,38 +306,38 @@ class interpolator():
         # velChangeRequired = 2.0
         velChangeRequired = dynParameters.vel_change_required
 
-        keyPoints = [[] for x in range(self.dof)]
-        # currentVelChange = np.zeros((self.dof))
-        lastVelCounter = np.zeros((self.dof))
-        lastVelDirection = np.zeros((self.dof))
+        keyPoints = [[] for x in range(self.dof_vel)]
+        # currentVelChange = np.zeros((self.dof_pos))
+        lastVelCounter = np.zeros((self.dof_vel))
+        lastVelDirection = np.zeros((self.dof_pos))
 
-        counter = np.zeros((self.dof))
+        counter = np.zeros((self.dof_pos))
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             keyPoints[i].append(0)
-            lastVelCounter[i] = trajectoryStates[0, i + self.dof]
+            lastVelCounter[i] = trajectoryStates[0, i + self.dof_vel]
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             for j in range(1, self.trajecLength):
                 counter[i] += 1
 
-                # velChange = trajectoryStates[j+1, i + self.dof] - trajectoryStates[j, i + self.dof]
+                # velChange = trajectoryStates[j+1, i + self.dof_vel] - trajectoryStates[j, i + self.dof_vel]
                 # currentVelChange[i] += velChange
-                currentVelDirection = trajectoryStates[j, i + self.dof] - trajectoryStates[j-1, i + self.dof]
-                currentVelChange = trajectoryStates[j, i + self.dof] - lastVelCounter[i]
+                currentVelDirection = trajectoryStates[j, i + self.dof_vel] - trajectoryStates[j-1, i + self.dof_vel]
+                currentVelChange = trajectoryStates[j, i + self.dof_vel] - lastVelCounter[i]
 
                 if(currentVelChange > velChangeRequired or currentVelChange < -velChangeRequired):
                     keyPoints[i].append(j)
-                    lastVelCounter[i] = trajectoryStates[j, i + self.dof]
+                    lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
                 else:
                     if(counter[i] >= maxN):
                         keyPoints[i].append(j)
                         counter[i] = 0
-                        lastVelCounter[i] = trajectoryStates[j, i + self.dof]
+                        lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
                     else:
                         if(currentVelDirection * lastVelDirection[i] < 0):
                             keyPoints[i].append(j)
-                            lastVelCounter[i] = trajectoryStates[j, i + self.dof]
+                            lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
                             counter[i] = 0
 
                 lastVelDirection[i] = currentVelDirection
@@ -336,7 +345,7 @@ class interpolator():
                 
 
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             if(keyPoints[i][-1] != self.trajecLength - 1):
                 keyPoints[i].append(self.trajecLength - 1)
 
@@ -344,13 +353,13 @@ class interpolator():
 
     
     # def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
-    #     mainKeyPoints = [[] for x in range(self.dof)]
-    #     keyPoints = [[] for x in range(self.dof)]
+    #     mainKeyPoints = [[] for x in range(self.dof_pos)]
+    #     keyPoints = [[] for x in range(self.dof_pos)]
 
-    #     for i in range(self.dof):
+    #     for i in range(self.dof_pos):
     #         mainKeyPoints[i].append(0)
 
-    #     counterSinceLastEval = np.zeros((self.dof))
+    #     counterSinceLastEval = np.zeros((self.dof_pos))
     #     # outsideHysterisis = [False] * self.dof
     #     # resetToZeroAddKeypoint = [False] * self.dof
     #     # -1 is down, 0 is across and 1 is upwards
@@ -364,7 +373,7 @@ class interpolator():
 
     #     jerkProfile = self.calcJerkOverTrajectory(self.states[0])
 
-    #     for i in range(self.dof):
+    #     for i in range(self.dof_pos):
     #         for j in range(1, len(jerkProfile)):
 
     #             current_direction = jerkProfile[j, i] - jerkProfile[j-1, i]
@@ -421,7 +430,7 @@ class interpolator():
     #             #     counterSinceLastEval[i] = counterSinceLastEval[i] + 1
 
 
-    #     for i in range(self.dof):
+    #     for i in range(self.dof_pos):
     #         for j in range(len(mainKeyPoints[i])):
     #             if(j == 0):
     #                 keyPoints[i].append(mainKeyPoints[i][j])
@@ -434,21 +443,21 @@ class interpolator():
     #                 # keyPoints[i].append(mainKeyPoints[i][j] + 10)
     #                 # keyPoints[i].append(mainKeyPoints[i][j] + 15)
 
-    #     for i in range(self.dof):
+    #     for i in range(self.dof_pos):
     #         keyPoints[i].append(self.trajecLength - 1)
         
     #     return keyPoints 
 
     def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
-        mainKeyPoints = [[] for x in range(self.dof)]
-        keyPoints = [[] for x in range(self.dof)]
+        mainKeyPoints = [[] for x in range(self.dof_vel)]
+        keyPoints = [[] for x in range(self.dof_vel)]
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             mainKeyPoints[i].append(0)
 
-        counterSinceLastEval = np.zeros((self.dof))
-        outsideHysterisis = [False] * self.dof
-        resetToZeroAddKeypoint = [False] * self.dof
+        counterSinceLastEval = np.zeros((self.dof_vel))
+        outsideHysterisis = [False] * self.dof_vel
+        resetToZeroAddKeypoint = [False] * self.dof_vel
 
         minN = dynParameters.minN
         maxN = dynParameters.maxN
@@ -458,7 +467,7 @@ class interpolator():
 
         jerkProfile = self.calcJerkOverTrajectory(self.states[0])
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             for j in range(1, len(jerkProfile)):
 
                 # if(outsideHysterisis[i] == True):
@@ -509,7 +518,7 @@ class interpolator():
 
                 counterSinceLastEval[i] = counterSinceLastEval[i] + 1
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             for j in range(len(mainKeyPoints[i])):
                 if(j == 0):
                     keyPoints[i].append(mainKeyPoints[i][j])
@@ -522,18 +531,18 @@ class interpolator():
                     # keyPoints[i].append(mainKeyPoints[i][j] + 10)
                     # keyPoints[i].append(mainKeyPoints[i][j] + 15)
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             keyPoints[i].append(self.trajecLength - 1)
         
         return keyPoints 
 
     def keyPoints_adaptiveAccel(self, trajectoryStates, dynParameters):
-        keyPoints = [[] for x in range(self.dof)]
+        keyPoints = [[] for x in range(self.dof_pos)]
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             keyPoints[i].append(0)
 
-        counterSinceLastEval = np.zeros((self.dof))
+        counterSinceLastEval = np.zeros((self.dof_pos))
 
         minN = dynParameters.minN
         maxN = dynParameters.maxN
@@ -543,7 +552,7 @@ class interpolator():
 
         accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             for j in range(len(accelProfile)):
 
                 if(counterSinceLastEval[i] >= minN):
@@ -557,14 +566,14 @@ class interpolator():
 
                 counterSinceLastEval[i] = counterSinceLastEval[i] + 1
 
-        for i in range(self.dof):
+        for i in range(self.dof_vel):
             keyPoints[i].append(self.trajecLength - 1)
         
         return keyPoints 
 
     def keyPoints_iteratively(self, trajectoryStates, dynParameters):
-        keyPoints = [[] for x in range(self.dof)]
-        for i in range(self.dof):
+        keyPoints = [[] for x in range(self.dof_pos)]
+        for i in range(self.dof_pos):
             keyPoints[i].append(0)
             # keyPoints[i].append(self.trajecLength - 1)
 
@@ -577,7 +586,7 @@ class interpolator():
         startIndex = 0
         endIndex = self.trajecLength - 1
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             binComplete = False
             listofIndicesCheck = []
             indexTuple = (startIndex, endIndex)
@@ -614,7 +623,7 @@ class interpolator():
                 listofIndicesCheck = subListIndices.copy()
                 subListIndices = []
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             keyPoints[i].sort()
             keyPoints[i] = list(dict.fromkeys(keyPoints[i]))
 
@@ -630,7 +639,7 @@ class interpolator():
         startVals = A_matrices[startIndex,:]
         endVals = A_matrices[endIndex,:]
 
-        if((endIndex - startIndex) < minN):
+        if((endIndex - startIndex) <= minN):
             return True, midIndex
 
         trueMidVals = A_matrices[midIndex,:]
@@ -663,10 +672,10 @@ class interpolator():
         sumsqDiff = 0
         counter = 0
         counterSmallVals = 0
-        offsets = [0, self.dof]
+        offsets = [0, self.dof_pos]
 
         for i in range(2):
-            for j in range(self.dof):
+            for j in range(self.dof_vel):
                 index = offsets[i] + dofNum + (j * self.numStates)
                 sqDiff = (matrix1[index] - matrix2[index]) ** 2
                 counter = counter + 1
@@ -710,7 +719,7 @@ class interpolator():
 
         # print(reEvaluationIndicies[0])
 
-        for i in range(self.dof):
+        for i in range(self.dof_pos):
             for j in range(len(reEvaluationIndicies[i]) - 1):
                     
                 startIndex_pos = reEvaluationIndicies[i][j]
@@ -719,13 +728,13 @@ class interpolator():
                 endIndex_vel = reEvaluationIndicies[i][j + 1]
                 # print("startIndex_pos: " + str(startIndex_pos))
                 # print("endIndex_pos: " + str(endIndex_pos))
-                for k in range(self.dof):
+                for k in range(self.dof_pos):
 
                     startVals_pos = A_matrices[startIndex_pos, (k * self.numStates) + i]
-                    startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof]
+                    startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof_vel]
 
                     endVals_pos = A_matrices[endIndex_pos, (k * self.numStates) + i]
-                    endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof]
+                    endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof_vel]
                     # print("startVals: " + str(startVals_pos)
 
                     diff_pos = endVals_pos - startVals_pos
@@ -734,11 +743,11 @@ class interpolator():
                     stepsBetween_vel = endIndex_vel - startIndex_vel
 
                     linInterpolationData[startIndex_pos, (k * self.numStates) + i] = startVals_pos
-                    linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof] = startVals_vel
+                    linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof_vel] = startVals_vel
 
                     for u in range(1, stepsBetween_pos):
                         linInterpolationData[startIndex_pos + u, (k * self.numStates) + i] = startVals_pos + (diff_pos * (u/stepsBetween_pos))
-                        linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof] = startVals_vel + (diff_vel * (u/stepsBetween_vel))
+                        linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_vel] = startVals_vel + (diff_vel * (u/stepsBetween_vel))
 
         
         linInterpolationData[len(linInterpolationData) - 1,:] = linInterpolationData[len(linInterpolationData) - 2,:]
