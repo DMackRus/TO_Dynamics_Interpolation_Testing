@@ -6,8 +6,6 @@ import math
 from dataclasses import dataclass
 import yaml
 
-numTrajectoriesTest = 1
-
 @dataclass
 class derivative_interpolator():
     keyPoint_method: str
@@ -30,7 +28,7 @@ class interpolator():
         self.states = []
         self.controls = []
         
-        # Load meta data infomation
+        # -------------------------------- Load meta data info -------------------------------------------
         with open(startPath + '/meta_data.yaml', 'r') as file:
             task_config = yaml.safe_load(file)
 
@@ -63,25 +61,23 @@ class interpolator():
 
         print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
         print(f'quat w indices: {self.quat_w_indices}')
+
+        # -------------------------------------------------------------------------------------------------
         
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
         self.trajecLength = rows 
 
-        for i in range(numTrajectoriesTest):
-            self.A_matrices.append([])
-            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.A_matrices[i] = tempPandas.to_numpy()
+        tempPandas = pandas.iloc[0:self.trajecLength]
+        self.A_matrices = tempPandas.to_numpy()
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
 
-        for i in range(numTrajectoriesTest):
-            self.B_matrices.append([])
-            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.B_matrices[i] = tempPandas.to_numpy()
+        tempPandas = pandas.iloc[0:self.trajecLength]
+        self.B_matrices = tempPandas.to_numpy()
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -92,19 +88,21 @@ class interpolator():
         # TODO check if this is right???
         self.sizeOfAMatrix = self.numStates * self.numStates
 
-        for i in range(numTrajectoriesTest):
-            self.states.append([])
-            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.states[i] = tempPandas.to_numpy()
+        tempPandas = pandas.iloc[0:self.trajecLength]
+        self.states = tempPandas.to_numpy()
+
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) +  '/controls.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
         self.num_ctrl = cols
 
-        for i in range(numTrajectoriesTest):
-            self.controls.append([])
-            tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.controls[i] = tempPandas.to_numpy()
+        tempPandas = pandas.iloc[0:self.trajecLength]
+        self.controls = tempPandas.to_numpy()
+
+        print(self.A_matrices.shape)
+        # reshape A matrices
+        self.A_matrices = self.A_matrices.reshape((self.trajecLength, self.dof_vel, self.numStates))
+        print(self.A_matrices.shape)
 
         if(0):
             T = 5.0         # Sample Period
@@ -116,7 +114,7 @@ class interpolator():
 
             self.filteredTrajectory = self.A_matrices[0].copy()
 
-            for i in range(len(self.A_matrices[0][0])):
+            for i in range(len(self.A_matrices[0])):
                 
                 # self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.A_matrices[0][:,i].copy(), cutoff, nyq, order)
 
@@ -125,16 +123,14 @@ class interpolator():
                 self.A_matrices[0][:,i] = self.filteredTrajectory[:,i].copy()
 
         else:
-            self.filteredTrajectory = self.A_matrices[0].copy()
+            self.filteredTrajectory = self.A_matrices.copy()
 
         self.dynParams = []
 
     def interpolateTrajectory(self, trajecNumber, dynParams):
-        A_matrices = self.A_matrices[trajecNumber]
-        B_matrices = self.B_matrices[trajecNumber]
 
         self.dynParams = dynParams
-        keyPoints_vel = self.generateKeypoints(A_matrices, B_matrices, self.states[trajecNumber].copy(), self.controls[trajecNumber].copy(), self.dynParams.copy())
+        keyPoints_vel = self.generateKeypoints(self.A_matrices, self.B_matrices, self.states.copy(), self.controls.copy(), self.dynParams.copy())
 
         # If there are quaternions, generate key points for them
         key_points_w = []
@@ -148,17 +144,17 @@ class interpolator():
 
         all_interpolations = []
         for i in range(len(self.dynParams)):
-            all_interpolations.append(self.generateLinInterpolation(A_matrices, keyPoints_vel[i].copy(), key_points_w.copy()))
+            all_interpolations.append(self.generateLinInterpolation(self.A_matrices, keyPoints_vel[i].copy(), key_points_w.copy()))
 
         #store lininterp and quadratic interp into interpolateTrajectory
-        interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, len(A_matrices[0])))
+        interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.numStates))
         errors = np.zeros((len(self.dynParams)))
 
         for i in range(len(self.dynParams)):
-            interpolatedTrajectory[i,:,:] = all_interpolations[i].copy()
-            errors[i] = self.calcErrorOverTrajectory(A_matrices, all_interpolations[i])
+            interpolatedTrajectory[i,:,:,:] = all_interpolations[i].copy()
+            errors[i] = self.calcErrorOverTrajectory(self.A_matrices, all_interpolations[i])
 
-        return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints_vel, key_points_w
+        return self.filteredTrajectory, interpolatedTrajectory, self.A_matrices, errors, keyPoints_vel, key_points_w
     
     def calcErrorOverTrajectory(self, groundTruth, prediction):
         '''
@@ -166,28 +162,33 @@ class interpolator():
         trajectory and our interpolation
 
         '''
+        sum_abs_diff = np.zeros((self.dof_vel, self.numStates))
+        for t in range(self.trajecLength):
+            sum_abs_diff += abs((groundTruth[t] - prediction[t]))
+
+        mean_sum_squared = np.sum(sum_abs_diff) / self.trajecLength
         
-        meanSqDiff = np.zeros((groundTruth.shape[1]))
+        # meanSqDiff = np.zeros((groundTruth.shape[1]))
 
-        # Loop over the matrix values
-        for i in range(len(meanSqDiff)):
+        # # Loop over the matrix values
+        # for i in range(len(meanSqDiff)):
 
-            sumAbsDiff = 0
-            # Loop over trajectory length
-            for j in range(self.trajecLength):
-                sumAbsDiff += abs((groundTruth[j, i] - prediction[j, i]))
+        #     sumAbsDiff = 0
+        #     # Loop over trajectory length
+        #     for j in range(self.trajecLength):
+        #         sumAbsDiff += abs((groundTruth[j, i] - prediction[j, i]))
 
-            meanSqDiff[i] = sumAbsDiff / self.trajecLength
+        #     meanSqDiff[i] = sumAbsDiff / self.trajecLength
 
-        meanSumSquared = np.sum(meanSqDiff)
+        # meanSumSquared = np.sum(meanSqDiff)
 
-        return meanSumSquared 
+        return mean_sum_squared 
     
     def returnTrajecInformation(self):
-        self.jerkProfile = self.calcJerkOverTrajectory(self.states[0])
-        self.accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
+        self.jerkProfile = self.calcJerkOverTrajectory(self.states)
+        self.accelProfile = self.calculateAccellerationOverTrajectory(self.states)
 
-        return self.jerkProfile, self.accelProfile, self.states[0].copy(), self.controls[0].copy()
+        return self.jerkProfile, self.accelProfile, self.states.copy(), self.controls.copy()
 
     def calculateAccellerationOverTrajectory(self, trajectoryStates):
         # state vector = self.dof_pos + self.dof_vel
@@ -379,7 +380,7 @@ class interpolator():
         # temp
         # velGradCubeSensitivity = 0.0002
 
-        jerkProfile = self.calcJerkOverTrajectory(self.states[0])
+        jerkProfile = self.calcJerkOverTrajectory(self.states)
 
         for i in range(self.dof_vel):
             for j in range(1, len(jerkProfile)):
@@ -464,7 +465,7 @@ class interpolator():
         # temp
         # velGradCubeSensitivity = 0.0002
 
-        accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
+        accelProfile = self.calculateAccellerationOverTrajectory(self.states)
 
         for i in range(self.dof_vel):
             for j in range(len(accelProfile)):
@@ -604,86 +605,68 @@ class interpolator():
         return sumsqDiff
 
     def meansqDiffBetweenAMatrices(self, matrix1, matrix2, dofNum):
-        sumsqDiff = 0
+        sum_sq_diff = 0
         counter = 0
         counterSmallVals = 0
         offsets = [0, self.dof_pos]
 
         for i in range(2):
-            for j in range(self.dof_vel):
-                index = offsets[i] + dofNum + (j * self.numStates)
-                sqDiff = (matrix1[index] - matrix2[index]) ** 2
-                counter = counter + 1
-                # if(sqDiff < 0.000001):
-                #     sqDiff = 0
-                #     counterSmallVals += 1
-                # #ignore large values
-                # # elif(sqDiff > 0.5):
-                # #     sqDiff = 0
-                # else:
-                #     counter = counter + 1
+            column_index = offsets[i] + dofNum
+            sq_diff_column = (matrix1[:,column_index] - matrix2[:,column_index]) ** 2
+            sum_sq_diff += sq_diff_column.sum()
 
-                sumsqDiff = sumsqDiff + sqDiff
-
-        # for i in range(len(matrix1)):
-        #     sqDiff = (matrix1[i] - matrix2[i])**2
-        #     if(sqDiff < 0.000001):
-        #         sqDiff = 0
-        #         counterSmallVals += 1
-        #     #ignore large values
-        #     elif(sqDiff > 0.5):
-        #         sqDiff = 0
-        #     else:
-        #         counter = counter + 1
-
-        #     sumsqDiff = sumsqDiff + sqDiff
-
-        if(counter == 0):
-            sumsqDiff = 0
-        else:
-            sumsqDiff = sumsqDiff / counter
-            
-        # print("counter: " + str(counter))
-        # print("counter small vals: " + str(counterSmallVals))
+        mean_sq_diff = (sum_sq_diff / (2 * self.dof_vel))
         
-        return sumsqDiff
+        return mean_sq_diff
     
     def generateLinInterpolation(self, A_matrices, reEvaluationIndicies, key_points_w):
-        sizeofAMatrix = len(A_matrices[0])
-        linInterpolationData = np.zeros((self.trajecLength, sizeofAMatrix))
+        linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
 
         # print(reEvaluationIndicies[0])
 
         for i in range(self.dof_vel):
             for j in range(len(reEvaluationIndicies[i]) - 1):
                     
-                startIndex_pos = reEvaluationIndicies[i][j]
-                startIndex_vel = reEvaluationIndicies[i][j]
-                endIndex_pos = reEvaluationIndicies[i][j + 1]
-                endIndex_vel = reEvaluationIndicies[i][j + 1]
-                # print("startIndex_pos: " + str(startIndex_pos))
-                # print("endIndex_pos: " + str(endIndex_pos))
+                start_index = reEvaluationIndicies[i][j]
+                end_index = reEvaluationIndicies[i][j + 1]
 
-                # Looping through column values
-                for k in range(self.dof_vel):
+                # take the column values at start and end index
+                startVals_pos = A_matrices[start_index, :, i]
+                startVals_vel = A_matrices[start_index, :, i + self.dof_pos]
 
-                    startVals_pos = A_matrices[startIndex_pos, (k * self.numStates) + i]
-                    startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof_pos]
+                endVals_pos = A_matrices[end_index, :, i]
+                endVals_vel = A_matrices[end_index, :, i + self.dof_pos]
 
-                    endVals_pos = A_matrices[endIndex_pos, (k * self.numStates) + i]
-                    endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof_pos]
-                    # print("startVals: " + str(startVals_pos)
+                diff_pos = endVals_pos - startVals_pos
+                interval = end_index - start_index
+                diff_vel = endVals_vel - startVals_vel
 
-                    diff_pos = endVals_pos - startVals_pos
-                    stepsBetween_pos = endIndex_pos - startIndex_pos
-                    diff_vel = endVals_vel - startVals_vel
+                for k in range(interval):
+                    linInterpolationData[start_index + k, :, i] = startVals_pos + (diff_pos * (k / interval))
+                    linInterpolationData[start_index + k, :, i + self.dof_pos] = startVals_vel + (diff_vel * (k / interval))
 
-                    linInterpolationData[startIndex_pos, (k * self.numStates) + i] = startVals_pos
-                    linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof_pos] = startVals_vel
 
-                    for u in range(1, stepsBetween_pos):
-                        linInterpolationData[startIndex_pos + u, (k * self.numStates) + i] = startVals_pos + (diff_pos * (u/stepsBetween_pos))
-                        linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_pos] = startVals_vel + (diff_vel * (u/stepsBetween_pos))
+
+                # # Looping through column values
+                # for k in range(self.dof_vel):
+
+                #     startVals_pos = A_matrices[startIndex_pos, (k * self.numStates) + i]
+                #     startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof_pos]
+
+                #     endVals_pos = A_matrices[endIndex_pos, (k * self.numStates) + i]
+                #     endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof_pos]
+                #     # print("startVals: " + str(startVals_pos)
+
+                #     diff_pos = endVals_pos - startVals_pos
+                #     stepsBetween_pos = endIndex_pos - startIndex_pos
+                #     diff_vel = endVals_vel - startVals_vel
+
+                #     linInterpolationData[startIndex_pos, (k * self.numStates) + i] = startVals_pos
+                #     linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof_pos] = startVals_vel
+
+                #     for u in range(1, stepsBetween_pos):
+                #         linInterpolationData[startIndex_pos + u, (k * self.numStates) + i] = startVals_pos + (diff_pos * (u/stepsBetween_pos))
+                #         linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_pos] = startVals_vel + (diff_vel * (u/stepsBetween_pos))
 
         # Handle any quaternions w interpolation
         # print(self.quat_w_indices)

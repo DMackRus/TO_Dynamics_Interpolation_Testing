@@ -562,6 +562,7 @@ class dynamicsGUI():
 
         index = (int(self.entry_displayIndexRow.get()) * (self.dof_pos + self.dof_vel)) + int(self.entry_displayIndexCol.get())
 
+        row = int(self.entry_displayIndexRow.get())
         col = int(self.entry_displayIndexCol.get())
 
         # get the column
@@ -569,7 +570,7 @@ class dynamicsGUI():
         #TODO - fix this for multiple quaternions
         if(len(self.key_points_w) and col == self.dof_pos - 1):
             displayKeypoints = self.key_points_w
-            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, row, col])
         else:
             displayKeypoints = self.keyPoints[self.interpTypeNum]
             # 0 -> dof_pos - 1, dof_pos -> dof_pos + dof_vel - 1
@@ -577,7 +578,7 @@ class dynamicsGUI():
                 col = col - self.dof_pos
             # displayKeypoints = displayKeypoints[col % self.dof_vel]
             displayKeypoints = displayKeypoints[col]
-            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, row, col])
 
         self.numEvals = len(displayKeypoints)
 
@@ -585,20 +586,22 @@ class dynamicsGUI():
 
         if(self.showFilter):
             print("showing filtered trajectory")
-            self.plot_AB.plot(self.trueTrajec[:,index], color = 'orange', label='Ground truth')
+            self.plot_AB.plot(self.trueTrajec[:, row, col], color = 'orange', label='Ground truth')
 
-        self.plot_AB.plot(self.unfilteredTrajec[:,index], color = self.black, label='Unfiltered')
+        self.plot_AB.plot(self.unfilteredTrajec[:, row, col], color = self.black, label='Unfiltered')
 
         # Plot keypoints
-        self.plot_AB.scatter(displayKeypoints, highlightedIndices[:, index], s=10, color = self.yellow, zorder=10)
+        print(f'display keypoints shape: {len(displayKeypoints)}')
+        print(f'highlighted indices shape: {highlightedIndices.shape}')
+        self.plot_AB.scatter(displayKeypoints, highlightedIndices, s=10, color = self.yellow, zorder=10)
 
-        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:,index], color = self.yellow, label = 'Interpolated')
+        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:, row, col], color = self.yellow, label = 'Interpolated')
         self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
 
         # set y lims
-        minVal = np.min(self.unfilteredTrajec[:,index])
-        maxVal = np.max(self.unfilteredTrajec[:,index])
+        minVal = np.min(self.unfilteredTrajec[:,row, col])
+        maxVal = np.max(self.unfilteredTrajec[:,row, col])
 
         if (maxVal - minVal < 0.1):
             self.plot_AB.set_ylim([minVal - 0.05, maxVal + 0.05])
