@@ -185,7 +185,7 @@ class dynamicsGUI():
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
-        self.entry_tasks.insert(0, self.taskNames[1]) # 7 kinova side
+        self.entry_tasks.insert(0, self.taskNames[7]) # 7 kinova side
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
         self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_trajecNum.insert(1, "1")
@@ -591,8 +591,6 @@ class dynamicsGUI():
         self.plot_AB.plot(self.unfilteredTrajec[:, row, col], color = self.black, label='Unfiltered')
 
         # Plot keypoints
-        print(f'display keypoints shape: {len(displayKeypoints)}')
-        print(f'highlighted indices shape: {highlightedIndices.shape}')
         self.plot_AB.scatter(displayKeypoints, highlightedIndices, s=10, color = self.yellow, zorder=10)
 
         self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:, row, col], color = self.yellow, label = 'Interpolated')
