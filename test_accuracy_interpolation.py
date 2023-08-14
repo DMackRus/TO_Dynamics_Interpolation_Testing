@@ -6,21 +6,27 @@ from interpolateDynamics import *
 
 def main():
     # Create an interpolator object for a given task
+    all_tasks = ["acrobot", "doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", 
+                "panda_boxFlick", "panda_boxFlick_low_clutter", "panda_boxFlick_heavy_clutter",
+                "kinova_ballPush_side", "kinova_ballPush_forwards", "kinova_ball_lift", "mini_cheetah_running"]
     # taskName = "doublePendulum"
-    taskName = "doublePendulum"
-    numTrajectories = 6
+    # taskName = "panda_reaching"
+    # taskName = "panda_pushing"
+    # taskName = "acrobot"
+    taskName = "panda_pushing_heavy_clutter"
+    numTrajectories = 100
 
     methods = []
     errors_methods = []
     percentage_derivs_methods = []
 
-    # ------------ Iterative error -------------------------
-    methods.append("Iterative Error")
-    avg_errors, avg_percentage_derivs = iter_error_method(taskName, numTrajectories)
+    # ------------ Adaptive jerk --------------------------
+    methods.append("Adaptive Jerk")
+    avg_errors, avg_percentage_derivs = adaptive_jerk_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
 
-    print("iterative_error complete - 25 %")
+    print("adaptive_jerk complete - 25 %")
 
     # ------------ Adaptive acceleration -------------------
     methods.append("Adaptive Acell")
@@ -30,13 +36,13 @@ def main():
 
     print("adaptive_acell complete - 50 %")
 
-    # ------------ Adaptive jerk --------------------------
-    methods.append("Adaptive Jerk")
-    avg_errors, avg_percentage_derivs = adaptive_jerk_method(taskName, numTrajectories)
+    # ------------ Iterative error -------------------------
+    methods.append("Iterative Error")
+    avg_errors, avg_percentage_derivs = iter_error_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
 
-    print("adaptive_jerk complete - 75 %")
+    print("iterative_error complete - 75 %")
 
     # ------------- Mag vel change -----------------------
     methods.append("Mag Vel Change")
@@ -44,35 +50,85 @@ def main():
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
 
-    
+    # Save all the data
+    np.savez("results_interpolation_accuracy/" + taskName + "_results.npz", methods=methods, errors_methods=errors_methods, percentage_derivs_methods=percentage_derivs_methods)
+
+    # Find the best hyper parameters for each method as per some pareto front optimisation
+    # best_errors, best_percentage_derivs = return_best_pareto_front_settings(methods, avg_errors, avg_percentage_derivs)
+    # print(methods)
+    # print("Best errors: ", best_errors)
+    # print("Best percentage derivs: ", best_percentage_derivs)
+
 
     plot_results(taskName, methods, errors_methods, percentage_derivs_methods)
+
+def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_methods):
+    best_errors_methods = []
+    best_percentage_derivs_methods = []
+
+    for i in range(len(methods)):
+        best_cost = None
+        best_percentage_derivs = None
+        best_error = []
+
+        for j in range(len(error_methods[i])):
+            new_cost = (100 * error_methods[i][j]) + percentage_derivs_methods[i][j]
+            if(best_cost == None or (new_cost < best_cost)):
+                best_cost = new_cost
+                best_error = error_methods[i][j]
+                best_percentage_derivs = percentage_derivs_methods[i][j]
+
+        best_errors_methods.append(best_error)
+        best_percentage_derivs_methods.append(best_percentage_derivs)
+
+    return best_errors_methods, best_percentage_derivs_methods
 
 def iter_error_method(task, numTrajectories):
     # Params for double pendulum
     if(task == "doublePendulum"):
-        numMethods = 3
-        iter_error_threshold = [0.0001, 0.00001, 0.000007]
-        minN = 5
+        iter_error_threshold = [0.001, 0.0001, 0.00005, 0.00001, 0.000005, 0.000001]
+        minN = [2, 5, 10, 15, 20]
         maxN = 50
-        dynParams = [None] * numMethods
+        
     elif(task == "panda_reaching"):
-        numMethods = 3
-        iter_error_threshold = [0.004, 0.008, 0.001]
-        minN = 10
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
         maxN = 200
-        dynParams = [None] * numMethods
+
+    elif(task == "panda_pushing"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+
+    elif(task == "panda_pushing_low_clutter"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+
+    elif(task == "panda_pushing_heavy_clutter"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+
+    elif(task == "acrobot"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+
+    numMethods = len(iter_error_threshold) * len(minN)
+    dynParams = [None] * numMethods
     
-    
-    for i in range(3):
-        dynParams[i] = derivative_interpolator("iterativeError", minN, maxN, 0, 0, iter_error_threshold[i], 0)
-    # Iterative error
+    index = 0
+    for i in range(len(iter_error_threshold)):
+        for j in range(len(minN)):
+            dynParams[index] = derivative_interpolator("iterativeError", minN[j], maxN, 0, 0, iter_error_threshold[i], 0)
+            index += 1
     
     errors = np.zeros((numTrajectories, numMethods))
     percentage_derivs = np.zeros((numTrajectories, numMethods))
     for i in range(numTrajectories):
         myInterpolator = interpolator(task, i)
-        dof = myInterpolator.dof
+        dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
         _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
@@ -94,26 +150,49 @@ def iter_error_method(task, numTrajectories):
 def adaptive_acell_method(task, numTrajectories):
     # Params for double pendulum
     if(task == "doublePendulum"):
-        numMethods = 3
-        minN = 5
+        minN = [2, 5, 10, 15, 20]
         maxN = 50
-        acellThreshold = [0.1, 0.15, 0.2]
-        dynParams = [None] * numMethods
-    elif(task == "panda_reaching"):
-        numMethods = 3
-        minN = 10
-        maxN = 200
-        acellThreshold = [0.005, 0.001, 0.007]
-        dynParams = [None] * numMethods
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
 
-    for i in range(3):
-        dynParams[i] = derivative_interpolator("adaptiveAccel", minN, maxN, acellThreshold[i], 0, 0, 0)
+    elif(task == "panda_reaching"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "panda_pushing"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "panda_pushing_low_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "panda_pushing_heavy_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "acrobot"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+    
+    numMethods = len(acellThreshold) * len(minN)
+    dynParams = [None] * numMethods
+
+    index = 0
+    for i in range(len(acellThreshold)):
+        for j in range(len(minN)):
+            dynParams[index] = derivative_interpolator("adaptiveAccel", minN[j], maxN, acellThreshold[i], 0, 0, 0)
+            index += 1
     
     errors = np.zeros((numTrajectories, numMethods))
     percentage_derivs = np.zeros((numTrajectories, numMethods))
     for i in range(numTrajectories):
         myInterpolator = interpolator(task, i)
-        dof = myInterpolator.dof
+        dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
         _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
@@ -135,26 +214,49 @@ def adaptive_acell_method(task, numTrajectories):
 def adaptive_jerk_method(task, numTrajectories):
     # Params for double pendulum
     if(task == "doublePendulum"):
-        numMethods = 3
-        minN = 5
+        minN = [2, 5, 10, 15, 20]
         maxN = 50
-        jerkThreshold = [0.1, 0.15, 0.2]
-        dynParams = [None] * numMethods
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+        
     elif(task == "panda_reaching"):
-        numMethods = 3
-        minN = 10
+        minN = [2, 5, 10, 15, 20]
         maxN = 200
-        jerkThreshold = [0.005, 0.001, 0.007]
-        dynParams = [None] * numMethods
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
 
-    for i in range(3):
-        dynParams[i] = derivative_interpolator("adaptiveJerk", minN, maxN, 0, jerkThreshold[i], 0, 0)
+    elif(task == "panda_pushing"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+
+    elif(task == "panda_pushing_low_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+
+    elif(task == "panda_pushing_heavy_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+
+    elif(task == "acrobot"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+
+    numMethods = len(jerkThreshold) * len(minN)
+    dynParams = [None] * numMethods
+
+    index = 0
+    for i in range(len(jerkThreshold)):
+        for j in range(len(minN)):
+            dynParams[index] = derivative_interpolator("adaptiveJerk", minN[j], maxN, 0, jerkThreshold[i], 0, 0)
+            index += 1
     
     errors = np.zeros((numTrajectories, numMethods))
     percentage_derivs = np.zeros((numTrajectories, numMethods))
     for i in range(numTrajectories):
         myInterpolator = interpolator(task, i)
-        dof = myInterpolator.dof
+        dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
         _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
@@ -176,26 +278,49 @@ def adaptive_jerk_method(task, numTrajectories):
 def mag_vel_change_method(task, numTrajectories):
         # Params for double pendulum
     if(task == "doublePendulum"):
-        numMethods = 3
-        minN = 5
+        minN = [2, 5, 10, 15, 20]
         maxN = 50
-        mag_vel_change = [1.5, 2, 2.5]
-        dynParams = [None] * numMethods
-    elif(task == "panda_reaching"):
-        numMethods = 3
-        minN = 10
-        maxN = 200
-        mag_vel_change = [1.5, 2, 2.5]
-        dynParams = [None] * numMethods
+        mag_vel_change = [0.1, 0.5, 1, 1.5, 2, 2.5]
 
-    for i in range(3):
-        dynParams[i] = derivative_interpolator("magVelChange", minN, maxN, 0, 0, 0, mag_vel_change[i])
+    elif(task == "panda_reaching"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.1, 0.2, 0.5, 1.0, 1.5, 2.0]
+
+    elif(task == "panda_pushing"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
+
+    elif(task == "panda_pushing_low_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
+    
+    elif(task == "panda_pushing_heavy_clutter"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
+
+    elif(task == "acrobot"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.1, 0.5, 1, 1.5, 2, 2.5]
+
+    numMethods = len(mag_vel_change) * len(minN)
+    dynParams = [None] * numMethods
+
+    index = 0
+    for i in range(len(mag_vel_change)):
+        for j in range(len(minN)):
+            dynParams[index] = derivative_interpolator("magVelChange", minN[j], maxN, 0, 0, 0, mag_vel_change[i])
+            index += 1
     
     errors = np.zeros((numTrajectories, numMethods))
     percentage_derivs = np.zeros((numTrajectories, numMethods))
     for i in range(numTrajectories):
         myInterpolator = interpolator(task, i)
-        dof = myInterpolator.dof
+        dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
         _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
@@ -216,8 +341,8 @@ def mag_vel_change_method(task, numTrajectories):
 
 def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
 
-    print("Average errors: ", avg_errors)
-    print("Average percetn derivs:: ", avg_percentage_derivs)
+    # print("Average errors: ", avg_errors)
+    # print("Average percetn derivs:: ", avg_percentage_derivs)
 
     colors = ['#D96E26', '#38D926', '#2691D9', '#C726D9']
 
@@ -232,7 +357,18 @@ def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
     plt.show()
 
     
-
-
 if __name__ == "__main__":
-    main()
+    # main()
+
+    task_name = "panda_pushing_heavy_clutter"
+    data = np.load("results_interpolation_accuracy/" + task_name + "_results.npz")
+    method_names = data["methods"]
+    avg_errors = data["errors_methods"]
+    avg_percentage_derivs = data["percentage_derivs_methods"]
+
+    best_errors, best_percentage_derivs = return_best_pareto_front_settings(method_names, avg_errors, avg_percentage_derivs)
+    print(method_names)
+    print("Best errors: ", best_errors)
+    print("Best percentage derivs: ", best_percentage_derivs)
+
+    plot_results(task_name, method_names, avg_errors, avg_percentage_derivs)

@@ -12,7 +12,7 @@ class dynamicsGUI():
     def __init__(self, master):
         self.master = master
         self.master.title("GUI")
-        self.master.geometry("1400x700")
+        self.master.geometry("1400x900")
         self.master.resizable(True, True)
         self.master.title('Interactive Dynamics')
         
@@ -22,7 +22,7 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
+        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
                                      [10, 200, 0.005, 0.005, 0.005], 
@@ -148,6 +148,9 @@ class dynamicsGUI():
         self.label_iterativeErrorThreshold = tk.Label(self.AB_widgetsFrame, text="iterativeErrorThreshold", width=settingsWidth)
         self.entry_iterativeErrorThreshold = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_iterativeErrorThreshold.insert(0, "0.003")
+        self.label_velChangeSensitivity = tk.Label(self.AB_widgetsFrame, text="velChangeSensitivity", width=settingsWidth)
+        self.entry_velChangeSensitivity = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
+        self.entry_velChangeSensitivity.insert(0, "0.1")
         self.button_evaluate = tk.Button(self.AB_widgetsFrame, text="Evaluate", command=self.displayMode_callback)
 
         self.button_MinN_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incMinN_callback)
@@ -164,6 +167,9 @@ class dynamicsGUI():
 
         self.button_iterativeErrorThresh_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incIterativeError_callback)
         self.button_iterativeErrorThresh_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decIterativeError_callback)
+
+        self.button_velChangeSens_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incVelChangeSens_callback)
+        self.button_velChangeSens_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decVelChangeSens_callback)
 
         self.button_displayIndexRow_inc = tk.Button(self.AB_widgetsFrame, text="+", command=self.incdisplayIndexRow_callback)
         self.button_displayIndexRow_dec = tk.Button(self.AB_widgetsFrame, text="-", command=self.decdisplayIndexRow_callback)
@@ -216,6 +222,11 @@ class dynamicsGUI():
         self.button_iterativeErrorThresh_dec.grid(row=9, column=0)
         self.entry_iterativeErrorThreshold.grid(row=9, column=1)
         self.button_iterativeErrorThresh_inc.grid(row=9, column=2)
+
+        self.label_velChangeSensitivity.grid(row=10, columnspan = 3, sticky='EW')
+        self.button_velChangeSens_dec.grid(row=11, column=0)
+        self.entry_velChangeSensitivity.grid(row=11, column=1)
+        self.button_velChangeSens_inc.grid(row=11, column=2)
 
         self.label_displayIndexRow.grid(row=0, column=4, columnspan = 3, sticky='EW')
 
@@ -327,6 +338,16 @@ class dynamicsGUI():
         val = float(self.entry_iterativeErrorThreshold.get())
         self.entry_iterativeErrorThreshold.delete(0, END)
         self.entry_iterativeErrorThreshold.insert(0, str(val-0.0001))
+
+    def incVelChangeSens_callback(self):
+        val = float(self.entry_velChangeSensitivity.get())
+        self.entry_velChangeSensitivity.delete(0, END)
+        self.entry_velChangeSensitivity.insert(0, str(val+0.1))
+
+    def decVelChangeSens_callback(self):
+        val = float(self.entry_velChangeSensitivity.get())
+        self.entry_velChangeSensitivity.delete(0, END)
+        self.entry_velChangeSensitivity.insert(0, str(val-0.1))
 
     def incdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
@@ -596,6 +617,7 @@ class dynamicsGUI():
         jerkSensitivity = float(self.entry_jerkSensitivity.get())
         acellSensitivity = float(self.entry_acellSensitivity.get())
         iterativeErrorThreshold = float(self.entry_iterativeErrorThreshold.get())
+        velChangeSensitivity = float(self.entry_velChangeSensitivity.get())
 
         dynParams = [None] * len(self.interpolationTypes)
         for i in range(len(self.interpolationTypes)):

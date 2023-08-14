@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import butter,filtfilt
 import math
 from dataclasses import dataclass
+import yaml
 
 numTrajectoriesTest = 1
 
@@ -30,17 +31,39 @@ class interpolator():
         self.controls = []
         
         # Load meta data infomation
-        data = np.genfromtxt(startPath + "/meta_data.csv", delimiter=',')
-        self.dof_pos = int(data[0, 0])
-        self.dof_vel = int(data[1, 0])
-        self.num_ctrl = int(data[2, 0])
-        print(f'dof_pos: {self.dof_pos}, dof_vel: {self.dof_vel}, num_ctrl: {self.num_ctrl}')
+        with open(startPath + '/meta_data.yaml', 'r') as file:
+            task_config = yaml.safe_load(file)
 
+        self.robots = task_config['robots']
+        self.bodies = []
+        try:
+            self.bodies = task_config['bodies']
+        except:
+            pass
+
+        self.dof_pos = 0
+        self.dof_vel = 0
+        self.num_ctrl = 0
+        for robot in task_config['robots']:
+            self.dof_pos += task_config['robots'][robot]['num_joints']
+            self.dof_vel += task_config['robots'][robot]['num_joints']
+            self.num_ctrl += task_config['robots'][robot]['num_actuators']
+
+        if(len(self.bodies)):
+            for body in task_config['bodies']:
+                self.dof_pos += task_config['bodies'][body]['positions']
+                self.dof_pos += task_config['bodies'][body]['orientations']
+
+                self.dof_vel += (task_config['bodies'][body]['positions'] * 2)
+
+        self.quat_w_indices = [self.dof_pos - 1]
+
+        print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
+        print(f'quat w indices: {self.quat_w_indices}')
         
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
-        print(f"shape from A matrices {pandas.shape}")
         self.trajecLength = rows 
 
         for i in range(numTrajectoriesTest):
@@ -50,7 +73,6 @@ class interpolator():
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
-        print(f"shape from b matrices {pandas.shape}")
         rows, cols = pandas.shape
 
         for i in range(numTrajectoriesTest):
@@ -63,6 +85,8 @@ class interpolator():
         rows, cols = pandas.shape
 
         self.numStates = self.dof_pos + self.dof_vel
+        self.keyPointsSize = self.numStates + self.num_ctrl
+        # TODO check if this is right???
         self.sizeOfAMatrix = self.numStates * self.numStates
 
         for i in range(numTrajectoriesTest):
@@ -72,7 +96,6 @@ class interpolator():
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) +  '/controls.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
-        print(f'shapes from controls: {pandas.shape}')
         self.num_ctrl = cols
 
         for i in range(numTrajectoriesTest):
@@ -80,8 +103,7 @@ class interpolator():
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
             self.controls[i] = tempPandas.to_numpy()
 
-
-        if(1):
+        if(0):
             T = 5.0         # Sample Period
             fs = 100.0      # sample rate, Hz
             cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
@@ -93,17 +115,16 @@ class interpolator():
 
             for i in range(len(self.testTrajectories_A[0][0])):
                 
-                self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories_A[0][:,i].copy(), cutoff, nyq, order)
+                # self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories_A[0][:,i].copy(), cutoff, nyq, order)
+
+                # self.testTrajectories_A[0][:,i] = self.filteredTrajectory[:,i].copy()
+                self.filteredTrajectory[:,i] = filterArray(self.testTrajectories_A[0][:,i].copy())
+                self.testTrajectories_A[0][:,i] = self.filteredTrajectory[:,i].copy()
 
         else:
             self.filteredTrajectory = self.testTrajectories_A[0].copy()
 
         self.dynParams = []
-        self.error_dynLin = []
-        self.evals_dynLin = []
-        self.time_dynLin = []
-        self.displayData_raw = []
-        self.displayData_inteprolated = []
 
     def interpolateTrajectory(self, trajecNumber, dynParams):
         A_matrices = self.testTrajectories_A[trajecNumber]
@@ -122,52 +143,36 @@ class interpolator():
 
         for i in range(len(self.dynParams)):
             interpolatedTrajectory[i,:,:] = all_interpolations[i].copy()
-            errors[i] = self.calcMeanSumSquaredDiffForTrajec(A_matrices, all_interpolations[i])
+            errors[i] = self.calcErrorOverTrajectory(A_matrices, all_interpolations[i])
 
         return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints
     
-    def calcMeanSumSquaredDiffForTrajec(self, groundTruth, prediction):
+    def calcErrorOverTrajectory(self, groundTruth, prediction):
+        '''
+        Calculate a single number for the error over a trajectory between the true
+        trajectory and our interpolation
 
-        array1Size = len(groundTruth)
-        array2Size = len(prediction)
-        lenofTrajec = array2Size
+        '''
         
-        if(array1Size < array2Size):
-            lenofTrajec = array1Size
-        
-        meanSqDiff = np.zeros((lenofTrajec))
+        meanSqDiff = np.zeros((groundTruth.shape[1]))
 
-        for i in range(lenofTrajec):
-            meanSqDiff[i] = self.sumsqDiffBetweenAMatrices(groundTruth[i], prediction[i])
-            
-            # for j in range(size):
+        # Loop over the matrix values
+        for i in range(len(meanSqDiff)):
 
-                # diffVals = abs((groundTruth[i, j] - prediction[i, j]))
-                # SqDiff[i, j] = diffVals
+            sumAbsDiff = 0
+            # Loop over trajectory length
+            for j in range(self.trajecLength):
+                sumAbsDiff += abs((groundTruth[j, i] - prediction[j, i]))
 
-        # for j in range(size):
-        #     # stddev = np.std(SqDiff[:,j])
-        #     # mean = np.mean(SqDiff[:,j])
+            meanSqDiff[i] = sumAbsDiff / self.trajecLength
 
-        #     # ok = SqDiff[:,j] > (mean - (3 * stddev))
-        #     # SqDiff[~ok,j] = mean
-
-        #     # #step 2, values higher than 1 std from mean
-        #     # # ok = SqDiff[:,j] < (mean + ( 3 * stddev))
-        #     # # SqDiff[~ok,j] = mean
-
-        #     meanSqDiff[j] = np.sum(SqDiff[:,j])
-
-        #print("sum squared diff matrices: " + str(sumSqDiff))
         meanSumSquared = np.sum(meanSqDiff)
 
         return meanSumSquared 
     
     def returnTrajecInformation(self):
-
         self.jerkProfile = self.calcJerkOverTrajectory(self.states[0])
         self.accelProfile = self.calculateAccellerationOverTrajectory(self.states[0])
-
 
         return self.jerkProfile, self.accelProfile, self.states[0].copy(), self.controls[0].copy()
 
@@ -203,11 +208,6 @@ class interpolator():
 
             jerk[i,:] = currentJerk
 
-        # jerk = np.zeros((self.trajecLength - 2, self.dof_vel))
-        # for i in range(self.trajecLength - 2):
-        #     for j in range(self.dof_pos):
-        #         jerk[i,j] = second_order_state_change[i, j + self.dof_vel]
-
         return jerk
     
     def generateKeypoints(self, A_matrices, B_matrices, trajectoryStates, trajectoryControls, dynParameters):
@@ -231,14 +231,14 @@ class interpolator():
         return keyPoints
     
     def keyPoints_setInterval(self, dynParameters):
-        keyPoints = [[] for x in range(self.dof_pos)]
+        keyPoints = [[] for x in range(self.dof_vel)]
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             keyPoints[i].append(0)
 
         minN = dynParameters.minN
     
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             counter = 0
             for j in range(self.trajecLength - 1):
                 counter += 1
@@ -246,7 +246,7 @@ class interpolator():
                     counter = 0
                     keyPoints[i].append(j)
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             keyPoints[i].append(self.trajecLength - 1)
 
         return keyPoints 
@@ -309,15 +309,15 @@ class interpolator():
         keyPoints = [[] for x in range(self.dof_vel)]
         # currentVelChange = np.zeros((self.dof_pos))
         lastVelCounter = np.zeros((self.dof_vel))
-        lastVelDirection = np.zeros((self.dof_pos))
+        lastVelDirection = np.zeros((self.dof_vel))
 
-        counter = np.zeros((self.dof_pos))
+        counter = np.zeros((self.dof_vel))
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             keyPoints[i].append(0)
             lastVelCounter[i] = trajectoryStates[0, i + self.dof_vel]
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             for j in range(1, self.trajecLength):
                 counter[i] += 1
 
@@ -336,117 +336,18 @@ class interpolator():
                         lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
                     else:
                         if(currentVelDirection * lastVelDirection[i] < 0):
-                            keyPoints[i].append(j)
-                            lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
-                            counter[i] = 0
+                            if(counter[i] >= minN):
+                                keyPoints[i].append(j)
+                                lastVelCounter[i] = trajectoryStates[j, i + self.dof_vel]
+                                counter[i] = 0
 
                 lastVelDirection[i] = currentVelDirection
 
-                
-
-
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             if(keyPoints[i][-1] != self.trajecLength - 1):
                 keyPoints[i].append(self.trajecLength - 1)
 
         return keyPoints
-
-    
-    # def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
-    #     mainKeyPoints = [[] for x in range(self.dof_pos)]
-    #     keyPoints = [[] for x in range(self.dof_pos)]
-
-    #     for i in range(self.dof_pos):
-    #         mainKeyPoints[i].append(0)
-
-    #     counterSinceLastEval = np.zeros((self.dof_pos))
-    #     # outsideHysterisis = [False] * self.dof
-    #     # resetToZeroAddKeypoint = [False] * self.dof
-    #     # -1 is down, 0 is across and 1 is upwards
-    #     last_direction = [0] * self.dof
-
-    #     minN = int(dynParameters[0])
-    #     maxN = int(dynParameters[1])
-    #     jerkSensitivity = dynParameters[2]
-    #     # temp
-    #     # velGradCubeSensitivity = 0.0002
-
-    #     jerkProfile = self.calcJerkOverTrajectory(self.states[0])
-
-    #     for i in range(self.dof_pos):
-    #         for j in range(1, len(jerkProfile)):
-
-    #             current_direction = jerkProfile[j, i] - jerkProfile[j-1, i]
-    #             # print(current_direction)
-    #             # if(current_direction > 0.0001):
-    #             #     current_direction = 1
-    #             # elif(current_direction < -0.0001):
-    #             #     current_direction = -1
-    #             # else:
-    #             #     current_direction = 0
-
-    #             change_in_direction = current_direction * last_direction[i]
-
-    #             if(change_in_direction <= -0.000000000002):
-    #                 mainKeyPoints[i].append(j)
-                    
-    #             last_direction[i] = current_direction
-
-
-    #             # if(outsideHysterisis[i] == True):
-    #             #     if(jerkProfile[j, i] < jerkSensitivity and jerkProfile[j, i] > -jerkSensitivity):
-    #             #         mainKeyPoints[i].append(j)
-    #             #         outsideHysterisis[i] = False
-    #             #         resetToZeroAddKeypoint[i] = True
-    #             #         counterSinceLastEval[i] = 0
-    #             #     else:
-    #             #         pass
-    #             #         # counterSinceLastEval[i] += 1
-    #             #         # if(counterSinceLastEval[i] >= minN):
-    #             #         #     mainKeyPoints[i].append(j)
-    #             #         #     counterSinceLastEval[i] = 0
-
-    #             # else:
-    #             #     if(jerkProfile[j, i] > jerkSensitivity or jerkProfile[j, i] < -jerkSensitivity):
-    #             #         # keyPoints[i].append(j-5)
-    #             #         if(mainKeyPoints[i][-1] != j-1):
-    #             #             mainKeyPoints[i].append(j-1)
-    #             #         mainKeyPoints[i].append(j)
-    #             #         outsideHysterisis[i] = True
-    #             #         resetToZeroAddKeypoint[i] = False
-    #             #         counterSinceLastEval[i] = 0
-
-    #             #     if(resetToZeroAddKeypoint[i] == True):
-    #             #         # print("reset to zero add keypoint")
-    #             #         if(jerkProfile[j, i] < 0.000001 and jerkProfile[j, i] > -0.000001):
-    #             #             mainKeyPoints[i].append(j)
-    #             #             resetToZeroAddKeypoint[i] = False
-    #             #             counterSinceLastEval[i] = 0
-
-    #             #     if(counterSinceLastEval[i] >= maxN):
-    #             #         mainKeyPoints[i].append(j)
-    #             #         counterSinceLastEval[i] = 0
-
-    #             #     counterSinceLastEval[i] = counterSinceLastEval[i] + 1
-
-
-    #     for i in range(self.dof_pos):
-    #         for j in range(len(mainKeyPoints[i])):
-    #             if(j == 0):
-    #                 keyPoints[i].append(mainKeyPoints[i][j])
-    #             else:
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 15)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 10)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] - 5)
-    #                 keyPoints[i].append(mainKeyPoints[i][j])
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 5)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 10)
-    #                 # keyPoints[i].append(mainKeyPoints[i][j] + 15)
-
-    #     for i in range(self.dof_pos):
-    #         keyPoints[i].append(self.trajecLength - 1)
-        
-    #     return keyPoints 
 
     def keyPoints_adaptiveJerk(self, trajectoryStates, dynParameters):
         mainKeyPoints = [[] for x in range(self.dof_vel)]
@@ -537,12 +438,12 @@ class interpolator():
         return keyPoints 
 
     def keyPoints_adaptiveAccel(self, trajectoryStates, dynParameters):
-        keyPoints = [[] for x in range(self.dof_pos)]
+        keyPoints = [[] for x in range(self.dof_vel)]
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             keyPoints[i].append(0)
 
-        counterSinceLastEval = np.zeros((self.dof_pos))
+        counterSinceLastEval = np.zeros((self.dof_vel))
 
         minN = dynParameters.minN
         maxN = dynParameters.maxN
@@ -572,8 +473,8 @@ class interpolator():
         return keyPoints 
 
     def keyPoints_iteratively(self, trajectoryStates, dynParameters):
-        keyPoints = [[] for x in range(self.dof_pos)]
-        for i in range(self.dof_pos):
+        keyPoints = [[] for x in range(self.dof_vel)]
+        for i in range(self.dof_vel):
             keyPoints[i].append(0)
             # keyPoints[i].append(self.trajecLength - 1)
 
@@ -586,7 +487,7 @@ class interpolator():
         startIndex = 0
         endIndex = self.trajecLength - 1
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             binComplete = False
             listofIndicesCheck = []
             indexTuple = (startIndex, endIndex)
@@ -623,7 +524,7 @@ class interpolator():
                 listofIndicesCheck = subListIndices.copy()
                 subListIndices = []
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             keyPoints[i].sort()
             keyPoints[i] = list(dict.fromkeys(keyPoints[i]))
 
@@ -647,7 +548,6 @@ class interpolator():
         linInterpMidVals = startVals + (diff/2)
 
         meanSqDiff = self.meansqDiffBetweenAMatrices(trueMidVals, linInterpMidVals, dofNum)
-        # sumsqDiff = self.sumsqDiffBetweenAMatrices(trueMidVals, linInterpMidVals)
         # print("meanSqDiff: " + str(meanSqDiff))
 
         # 0.05 for reaching and pushing
@@ -657,6 +557,28 @@ class interpolator():
             approximationGood = True
 
         return approximationGood, midIndex
+
+    def meanSqDiffMatrices(self, matrix1, matrix2):
+        meanSqDiff = 0
+        sumsqDiff = 0
+        counter = 0
+
+        for i in range(len(matrix1)):
+            sqDiff = abs(matrix1[i] - matrix2[i])
+            
+            if sqDiff > 10:
+                # print("large error: " + str(sqDiff) + " at index: " + str(i) + " with values: " + str(matrix1[i]) + " and " + str(matrix2[i]))
+                pass
+                
+            else:
+                counter = counter + 1
+                sumsqDiff = sumsqDiff + sqDiff
+                
+
+        meanSqDiff = sumsqDiff / counter
+
+        return meanSqDiff
+
     
     def sumsqDiffBetweenAMatrices(self, matrix1, matrix2):
         sumsqDiff = 0
@@ -719,7 +641,7 @@ class interpolator():
 
         # print(reEvaluationIndicies[0])
 
-        for i in range(self.dof_pos):
+        for i in range(self.dof_vel):
             for j in range(len(reEvaluationIndicies[i]) - 1):
                     
                 startIndex_pos = reEvaluationIndicies[i][j]
@@ -728,26 +650,31 @@ class interpolator():
                 endIndex_vel = reEvaluationIndicies[i][j + 1]
                 # print("startIndex_pos: " + str(startIndex_pos))
                 # print("endIndex_pos: " + str(endIndex_pos))
-                for k in range(self.dof_pos):
+
+                # Looping through column values
+                for k in range(self.dof_vel):
 
                     startVals_pos = A_matrices[startIndex_pos, (k * self.numStates) + i]
-                    startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof_vel]
+                    startVals_vel = A_matrices[startIndex_vel, (k * self.numStates) + i + self.dof_pos]
 
                     endVals_pos = A_matrices[endIndex_pos, (k * self.numStates) + i]
-                    endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof_vel]
+                    endVals_vel = A_matrices[endIndex_vel, (k * self.numStates) + i + self.dof_pos]
                     # print("startVals: " + str(startVals_pos)
 
                     diff_pos = endVals_pos - startVals_pos
                     stepsBetween_pos = endIndex_pos - startIndex_pos
                     diff_vel = endVals_vel - startVals_vel
-                    stepsBetween_vel = endIndex_vel - startIndex_vel
 
                     linInterpolationData[startIndex_pos, (k * self.numStates) + i] = startVals_pos
-                    linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof_vel] = startVals_vel
+                    linInterpolationData[startIndex_pos, (k * self.numStates) + i + self.dof_pos] = startVals_vel
 
                     for u in range(1, stepsBetween_pos):
                         linInterpolationData[startIndex_pos + u, (k * self.numStates) + i] = startVals_pos + (diff_pos * (u/stepsBetween_pos))
-                        linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_vel] = startVals_vel + (diff_vel * (u/stepsBetween_vel))
+                        linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_pos] = startVals_vel + (diff_vel * (u/stepsBetween_pos))
+
+        # Handle any quaternions w interpolation
+        # for i in range(self.quat_w_indices):
+
 
         
         linInterpolationData[len(linInterpolationData) - 1,:] = linInterpolationData[len(linInterpolationData) - 2,:]
@@ -878,7 +805,6 @@ def testFilter():
     pass
 
 def filterArray(unfiltered):
-    PI = 3.1415
     yn1 = unfiltered[0]
     xn1 = unfiltered[0]
 
@@ -894,9 +820,10 @@ def filterArray(unfiltered):
 
         filtered.append(yn)
 
-    plt.plot(filtered)
-    plt.plot(unfiltered)
-    plt.show()
+    # plt.plot(filtered)
+    # plt.plot(unfiltered)
+    # plt.show()
+    return filtered
 
 def ICRATemp():
     myInterp = interpolator(1, 1)
@@ -931,41 +858,70 @@ def ICRATemp():
     index += 1
 
 if __name__ == "__main__":
-    # ICRATemp()
 
-    # baseline
-    interp1 = interpolator("panda_pushing", 1000)
+    # Generate a sine curve with 100 points
+    x = np.linspace(0, 1, 100)
+    y = np.sin(2*np.pi*x)
 
-    interp2 = interpolator("panda_pushing", 1002)
 
-    index = 99
+    key_points_good =[0, 12, 25, 37, 50, 63, 75, 87, 99]
+    key_points_bad = [0, 25, 50, 75, 99]
 
-    for i in range(10):
-        plt.plot(interp1.testTrajectories_B[0][:,i])
-        plt.plot(interp2.testTrajectories_B[0][:,i])
-        plt.show()
+    # Generate a linear intepolation between those key_points on the sine curve
+    interp1 = []
+    interp2 = []
 
-    # myInterp = interpolator(0, 2)
+    for i in range(len(key_points_bad) - 1):
+        temp = np.linspace(y[key_points_bad[i]], y[key_points_bad[i+1]], key_points_bad[i+1] - key_points_bad[i] + 1)
+        for j in range(len(temp) - 1):
+            interp1.append(temp[j])
 
-    # # Filter requirements.
-    # T = 5.0         # Sample Period
-    # fs = 100      # sample rate, Hz
-    # cutoff = 1      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
-    # nyq = 0.5 * fs  # Nyquist Frequency
-    # order = 2       # sin wave can be approx represented as quadratic
-    # n = int(T * fs) # total number of samples
+    for i in range(len(key_points_good) - 1):
+        temp = np.linspace(y[key_points_good[i]], y[key_points_good[i+1]], key_points_good[i+1] - key_points_good[i] + 1)
+        for j in range(len(temp) - 1):
+            interp2.append(temp[j])
 
-    # index = 1
-    # for i in range(10):
-    #     filterArray(myInterp.testTrajectories[0][:,index + i])
 
-    # filterArray(myInterp.testTrajectories[0][:,index])
+    # Do some error calculation methods between these two
+    MAE = 0
+    MSE = 0
+    RMSE = 0
 
-    # filteredData = myInterp.butter_lowpass_filter(myInterp.testTrajectories[0][:,index], cutoff, fs, order)
+    # MSE
+    for i in range(len(interp2)):
+        MSE += (y[i] - interp2[i])**2
+    MSE = MSE/len(interp2)
 
-    # plt.plot(myInterp.testTrajectories[0][:,index])
-    # plt.plot(filteredData)
-    # plt.show()
+    # RMSE
+    RMSE = np.sqrt(MSE)
 
+    # MAE
+    for i in range(len(interp2)):
+        MAE += abs(y[i] - interp2[i])
+    MAE = MAE/len(interp2)
+
+    print(f' good approximation: MAE: {MAE}, MSE: {MSE}, RMSE: {RMSE}')
+
+        # MSE
+    for i in range(len(interp1)):
+        MSE += (y[i] - interp1[i])**2
+    MSE = MSE/len(interp1)
+
+    # RMSE
+    RMSE = np.sqrt(MSE)
+
+    # MAE
+    for i in range(len(interp1)):
+        MAE += abs(y[i] - interp1[i])
+    MAE = MAE/len(interp1)
+
+    print(f' bad approximation: MAE: {MAE}, MSE: {MSE}, RMSE: {RMSE}')
+
+
+    plt.plot(interp2, label = "good approximation")
+    plt.plot(interp1, label = "bad approximation")
+    plt.plot(y, label = "true value")
+    plt.legend()
+    plt.show()
 
 
