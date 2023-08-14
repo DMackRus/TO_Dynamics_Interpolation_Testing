@@ -25,8 +25,8 @@ class interpolator():
         self.task = task
         self.trajecNumber = trajecNumber
 
-        self.testTrajectories_A = []
-        self.testTrajectories_B = []
+        self.A_matrices = []
+        self.B_matrices = []
         self.states = []
         self.controls = []
         
@@ -70,18 +70,18 @@ class interpolator():
         self.trajecLength = rows 
 
         for i in range(numTrajectoriesTest):
-            self.testTrajectories_A.append([])
+            self.A_matrices.append([])
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.testTrajectories_A[i] = tempPandas.to_numpy()
+            self.A_matrices[i] = tempPandas.to_numpy()
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
 
         for i in range(numTrajectoriesTest):
-            self.testTrajectories_B.append([])
+            self.B_matrices.append([])
             tempPandas = pandas.iloc[i*self.trajecLength:(i + 1)*self.trajecLength]
-            self.testTrajectories_B[i] = tempPandas.to_numpy()
+            self.B_matrices[i] = tempPandas.to_numpy()
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -114,24 +114,24 @@ class interpolator():
             order = 2       # sin wave can be approx represented as quadratic
             n = int(T * fs) # total number of samples
 
-            self.filteredTrajectory = self.testTrajectories_A[0].copy()
+            self.filteredTrajectory = self.A_matrices[0].copy()
 
-            for i in range(len(self.testTrajectories_A[0][0])):
+            for i in range(len(self.A_matrices[0][0])):
                 
-                # self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.testTrajectories_A[0][:,i].copy(), cutoff, nyq, order)
+                # self.filteredTrajectory[:,i] = self.butter_lowpass_filter(self.A_matrices[0][:,i].copy(), cutoff, nyq, order)
 
-                # self.testTrajectories_A[0][:,i] = self.filteredTrajectory[:,i].copy()
-                self.filteredTrajectory[:,i] = filterArray(self.testTrajectories_A[0][:,i].copy())
-                self.testTrajectories_A[0][:,i] = self.filteredTrajectory[:,i].copy()
+                # self.A_matrices[0][:,i] = self.filteredTrajectory[:,i].copy()
+                self.filteredTrajectory[:,i] = filterArray(self.A_matrices[0][:,i].copy())
+                self.A_matrices[0][:,i] = self.filteredTrajectory[:,i].copy()
 
         else:
-            self.filteredTrajectory = self.testTrajectories_A[0].copy()
+            self.filteredTrajectory = self.A_matrices[0].copy()
 
         self.dynParams = []
 
     def interpolateTrajectory(self, trajecNumber, dynParams):
-        A_matrices = self.testTrajectories_A[trajecNumber]
-        B_matrices = self.testTrajectories_B[trajecNumber]
+        A_matrices = self.A_matrices[trajecNumber]
+        B_matrices = self.B_matrices[trajecNumber]
 
         self.dynParams = dynParams
         keyPoints_vel = self.generateKeypoints(A_matrices, B_matrices, self.states[trajecNumber].copy(), self.controls[trajecNumber].copy(), self.dynParams.copy())
