@@ -22,14 +22,15 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
+        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
+                                     [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005], 
                                      [10, 200, 0.005, 0.005, 0.005], 
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [2, 10, 0.0005, 0.0005, 0.0005],
                                      [10, 200, 0.005, 0.005, 0.005]]
 
         # dictionary of starting dyn params
@@ -184,10 +185,10 @@ class dynamicsGUI():
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
-        self.entry_tasks.insert(0, self.taskNames[6]) # 6 kinova side
+        self.entry_tasks.insert(0, self.taskNames[7]) # 7 kinova side
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
         self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
-        self.entry_trajecNum.insert(1, "0")
+        self.entry_trajecNum.insert(1, "1")
         self.button_tasks = tk.Button(self.AB_widgetsFrame, text="Load", command=self.load_callback)
 
         self.showFilter = 0
@@ -557,16 +558,26 @@ class dynamicsGUI():
             pass
         else:
             self.dynParams = dynParams
-            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints = self.interpolator.interpolateTrajectory(0, self.dynParams)
+            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints, self.key_points_w = self.interpolator.interpolateTrajectory(0, self.dynParams)
 
         index = (int(self.entry_displayIndexRow.get()) * (self.dof_pos + self.dof_vel)) + int(self.entry_displayIndexCol.get())
-        print(index)
 
         col = int(self.entry_displayIndexCol.get())
 
-        displayKeypoints = self.keyPoints[self.interpTypeNum]
-        displayKeypoints = displayKeypoints[col % self.dof_vel]
-        highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+        # get the column
+        # check it against size of dof vel
+        #TODO - fix this for multiple quaternions
+        if(len(self.key_points_w) and col == self.dof_pos - 1):
+            displayKeypoints = self.key_points_w
+            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
+        else:
+            displayKeypoints = self.keyPoints[self.interpTypeNum]
+            # 0 -> dof_pos - 1, dof_pos -> dof_pos + dof_vel - 1
+            if(col >= self.dof_pos):
+                col = col - self.dof_pos
+            # displayKeypoints = displayKeypoints[col % self.dof_vel]
+            displayKeypoints = displayKeypoints[col]
+            highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, ])
 
         self.numEvals = len(displayKeypoints)
 

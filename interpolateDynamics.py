@@ -49,6 +49,8 @@ class interpolator():
             self.dof_vel += task_config['robots'][robot]['num_joints']
             self.num_ctrl += task_config['robots'][robot]['num_actuators']
 
+        self.quat_w_indices = []
+
         if(len(self.bodies)):
             for body in task_config['bodies']:
                 self.dof_pos += task_config['bodies'][body]['positions']
@@ -56,7 +58,8 @@ class interpolator():
 
                 self.dof_vel += (task_config['bodies'][body]['positions'] * 2)
 
-        self.quat_w_indices = [self.dof_pos - 1]
+
+            self.quat_w_indices = [self.dof_pos - 1]
 
         print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
         print(f'quat w indices: {self.quat_w_indices}')
@@ -131,11 +134,21 @@ class interpolator():
         B_matrices = self.testTrajectories_B[trajecNumber]
 
         self.dynParams = dynParams
-        keyPoints = self.generateKeypoints(A_matrices, B_matrices, self.states[trajecNumber].copy(), self.controls[trajecNumber].copy(), self.dynParams.copy())
+        keyPoints_vel = self.generateKeypoints(A_matrices, B_matrices, self.states[trajecNumber].copy(), self.controls[trajecNumber].copy(), self.dynParams.copy())
+
+        # If there are quaternions, generate key points for them
+        key_points_w = []
+        if(len(self.quat_w_indices)):
+            key_points_w = np.arange(0, self.trajecLength, 5)
+
+            if(key_points_w[-1] != self.trajecLength - 1):
+                key_points_w = np.append(key_points_w, self.trajecLength - 1)
+
+        print(key_points_w)
 
         all_interpolations = []
         for i in range(len(self.dynParams)):
-            all_interpolations.append(self.generateLinInterpolation(A_matrices, keyPoints[i].copy()))
+            all_interpolations.append(self.generateLinInterpolation(A_matrices, keyPoints_vel[i].copy(), key_points_w.copy()))
 
         #store lininterp and quadratic interp into interpolateTrajectory
         interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, len(A_matrices[0])))
@@ -145,7 +158,7 @@ class interpolator():
             interpolatedTrajectory[i,:,:] = all_interpolations[i].copy()
             errors[i] = self.calcErrorOverTrajectory(A_matrices, all_interpolations[i])
 
-        return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints
+        return self.filteredTrajectory, interpolatedTrajectory, A_matrices, errors, keyPoints_vel, key_points_w
     
     def calcErrorOverTrajectory(self, groundTruth, prediction):
         '''
@@ -635,7 +648,7 @@ class interpolator():
         
         return sumsqDiff
     
-    def generateLinInterpolation(self, A_matrices, reEvaluationIndicies):
+    def generateLinInterpolation(self, A_matrices, reEvaluationIndicies, key_points_w):
         sizeofAMatrix = len(A_matrices[0])
         linInterpolationData = np.zeros((self.trajecLength, sizeofAMatrix))
 
@@ -673,126 +686,29 @@ class interpolator():
                         linInterpolationData[startIndex_vel + u, (k * self.numStates) + i + self.dof_pos] = startVals_vel + (diff_vel * (u/stepsBetween_pos))
 
         # Handle any quaternions w interpolation
-        # for i in range(self.quat_w_indices):
+        # print(self.quat_w_indices)
+        for i in range(len(self.quat_w_indices)):
+            print("here")
+            for j in range(len(key_points_w) - 1):
+                start_index = key_points_w[j]
+                end_index = key_points_w[j + 1]
 
+                for k in range(self.dof_vel):
+                    startVals = A_matrices[start_index, (k * self.numStates) + self.quat_w_indices[i]]
+                    print(f'time index: {start_index}, startVals')
+                    endVals = A_matrices[end_index, (k * self.numStates) + self.quat_w_indices[i]]
 
-        
+                    diff = endVals - startVals
+                    stepsBetween = end_index - start_index
+
+                    linInterpolationData[start_index, (k * self.numStates) + self.quat_w_indices[i]] = startVals
+
+                    for u in range(1, stepsBetween):
+                        linInterpolationData[start_index + u, (k * self.numStates) + self.quat_w_indices[i]] = startVals + (diff * (u/stepsBetween))
+
         linInterpolationData[len(linInterpolationData) - 1,:] = linInterpolationData[len(linInterpolationData) - 2,:]
+
         return linInterpolationData
-    
-    # def generateQuadInterpolation(self, A_matrices, reEvaluationIndicies):
-    #     sizeofMatrix = len(A_matrices[0])
-    #     quadInterpolationData = np.zeros((self.trajecLength, sizeofMatrix))
-
-    #     for i in range(len(reEvaluationIndicies) - 2):
-    #         startIndex = reEvaluationIndicies[i]
-    #         midIndex = reEvaluationIndicies[i + 1]
-    #         endIndex = reEvaluationIndicies[i + 2]
-
-    #         for j in range(sizeofMatrix):
-
-    #             points = np.zeros((3, 2))
-    #             point1 = np.array([A_matrices[startIndex, j], startIndex])
-    #             point2 = np.array([A_matrices[midIndex, j], midIndex])
-    #             point3 = np.array([A_matrices[endIndex, j], endIndex])
-
-    #             points[0] = point1
-    #             points[1] = point2
-    #             points[2] = point3
-
-    #             #solve for coefficients a, b, c
-
-    #             x_matrix = np.zeros((3, 3))
-    #             y_matrix = np.zeros((1, 3))
-
-    #             y_matrix[0, 0] = points[0, 0]
-    #             y_matrix[0, 1] = points[1, 0]
-    #             y_matrix[0, 2] = points[2, 0]
-
-    #             for k in range(3):
-    #                 x_matrix[0, k] = points[k, 1] * points[k, 1]
-    #                 x_matrix[1, k] = points[k, 1]
-    #                 x_matrix[2, k] = 1
-
-    #             x_inv = np.linalg.inv(x_matrix)
-
-    #             abc = y_matrix @ x_inv
-
-    #             quadInterpolationData[startIndex,j] = A_matrices[startIndex,j]
-
-    #             counter = 0
-    #             for k in range(startIndex, endIndex):
-    #                 a = abc[0, 0]
-    #                 b = abc[0, 1]
-    #                 c = abc[0, 2]
-
-    #                 nextVal = (a * k * k) + (b * k) + c
-    #                 quadInterpolationData[startIndex + counter, j] = nextVal
-    #                 counter = counter + 1
-
-    #     quadInterpolationData[len(quadInterpolationData) - 1,:] = quadInterpolationData[len(quadInterpolationData) - 2,:]
-
-    #     return quadInterpolationData
-    
-    # def generateCubicInterpolation(self, A_matrices, reEvaluationIndicies):
-    #     sizeofMatrix = len(A_matrices[0])
-    #     quadInterpolationData = np.zeros((self.trajecLength, sizeofMatrix))
-
-    #     for i in range(len(reEvaluationIndicies) - 3):
-    #         startIndex = reEvaluationIndicies[i]
-    #         midIndex1 = reEvaluationIndicies[i + 1]
-    #         midIndex2 = reEvaluationIndicies[i + 2]
-    #         endIndex = reEvaluationIndicies[i + 3]
-
-    #         for j in range(sizeofMatrix):
-
-    #             points = np.zeros((4, 2))
-    #             point1 = np.array([A_matrices[startIndex, j], startIndex])
-    #             point2 = np.array([A_matrices[midIndex1, j], midIndex1])
-    #             point3 = np.array([A_matrices[midIndex2, j], midIndex2])
-    #             point4 = np.array([A_matrices[endIndex, j], endIndex])
-
-    #             points[0] = point1
-    #             points[1] = point2
-    #             points[2] = point3
-    #             points[3] = point4
-
-    #             #solve for coefficients a, b, c
-
-    #             x_matrix = np.zeros((4, 4))
-    #             y_matrix = np.zeros((1, 4))
-
-    #             y_matrix[0, 0] = points[0, 0]
-    #             y_matrix[0, 1] = points[1, 0]
-    #             y_matrix[0, 2] = points[2, 0]
-    #             y_matrix[0, 3] = points[3, 0]
-
-    #             for k in range(4):
-    #                 x_matrix[0, k] = points[k, 1] * points[k, 1] * points[k, 1]
-    #                 x_matrix[1, k] = points[k, 1] * points[k, 1]
-    #                 x_matrix[2, k] = points[k, 1]
-    #                 x_matrix[3, k] = 1
-
-    #             x_inv = np.linalg.inv(x_matrix)
-
-    #             abcd = y_matrix @ x_inv
-
-    #             quadInterpolationData[startIndex,j] = A_matrices[startIndex,j]
-
-    #             counter = 0
-    #             for k in range(startIndex, endIndex):
-    #                 a = abcd[0, 0]
-    #                 b = abcd[0, 1]
-    #                 c = abcd[0, 2]
-    #                 d = abcd[0, 3]
-
-    #                 nextVal = (a * k * k * k) + (b * k * k) + (c * k) + d
-    #                 quadInterpolationData[startIndex + counter, j] = nextVal
-    #                 counter = counter + 1
-
-    #     quadInterpolationData[len(quadInterpolationData) - 1,:] = quadInterpolationData[len(quadInterpolationData) - 2,:]
-
-    #     return quadInterpolationData
     
     def butter_lowpass_filter(self, data, cutoff, nyq, order):
         normal_cutoff = cutoff / nyq
