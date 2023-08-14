@@ -12,46 +12,76 @@ def main():
     # taskName = "doublePendulum"
     # taskName = "panda_reaching"
     # taskName = "panda_pushing"
-    # taskName = "acrobot"
-    taskName = "panda_pushing_heavy_clutter"
-    numTrajectories = 100
+    taskName = "acrobot"
+    # taskName = "panda_pushing_heavy_clutter"
+    numTrajectories = 2
 
     methods = []
     errors_methods = []
     percentage_derivs_methods = []
+    dyn_parameters = []
 
     # ------------ Adaptive jerk --------------------------
     methods.append("Adaptive Jerk")
-    avg_errors, avg_percentage_derivs = adaptive_jerk_method(taskName, numTrajectories)
+    avg_errors, avg_percentage_derivs, dynParams = adaptive_jerk_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
+
+    dynParams_list = []
+    for i in range(len(dynParams)):
+        dynParams_list.append([dynParams[i].keyPoint_method, dynParams[i].minN, dynParams[i].maxN, 
+            dynParams[i].acellThreshold, dynParams[i].jerkThreshold, dynParams[i].iterative_error_threshold, dynParams[i].vel_change_required])
+
+    dyn_parameters.append(dynParams_list)
 
     print("adaptive_jerk complete - 25 %")
 
     # ------------ Adaptive acceleration -------------------
     methods.append("Adaptive Acell")
-    avg_errors, avg_percentage_derivs = adaptive_acell_method(taskName, numTrajectories)
+    avg_errors, avg_percentage_derivs, dynParams = adaptive_acell_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
+    
+    dynParams_list = []
+    for i in range(len(dynParams)):
+        dynParams_list.append([dynParams[i].keyPoint_method, dynParams[i].minN, dynParams[i].maxN, 
+            dynParams[i].acellThreshold, dynParams[i].jerkThreshold, dynParams[i].iterative_error_threshold, dynParams[i].vel_change_required])
+
+    dyn_parameters.append(dynParams_list)
 
     print("adaptive_acell complete - 50 %")
 
     # ------------ Iterative error -------------------------
     methods.append("Iterative Error")
-    avg_errors, avg_percentage_derivs = iter_error_method(taskName, numTrajectories)
+    avg_errors, avg_percentage_derivs, dynParams = iter_error_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
+
+    dynParams_list = []
+    for i in range(len(dynParams)):
+        dynParams_list.append([dynParams[i].keyPoint_method, dynParams[i].minN, dynParams[i].maxN, 
+            dynParams[i].acellThreshold, dynParams[i].jerkThreshold, dynParams[i].iterative_error_threshold, dynParams[i].vel_change_required])
+
+    dyn_parameters.append(dynParams_list)
 
     print("iterative_error complete - 75 %")
 
     # ------------- Mag vel change -----------------------
     methods.append("Mag Vel Change")
-    avg_errors, avg_percentage_derivs = mag_vel_change_method(taskName, numTrajectories)
+    avg_errors, avg_percentage_derivs, dynParams = mag_vel_change_method(taskName, numTrajectories)
     errors_methods.append(avg_errors)
     percentage_derivs_methods.append(avg_percentage_derivs)
 
+    dynParams_list = []
+    for i in range(len(dynParams)):
+        dynParams_list.append([dynParams[i].keyPoint_method, dynParams[i].minN, dynParams[i].maxN, 
+            dynParams[i].acellThreshold, dynParams[i].jerkThreshold, dynParams[i].iterative_error_threshold, dynParams[i].vel_change_required])
+
+    dyn_parameters.append(dynParams_list)
+
     # Save all the data
-    np.savez("results_interpolation_accuracy/" + taskName + "_results.npz", methods=methods, errors_methods=errors_methods, percentage_derivs_methods=percentage_derivs_methods)
+    np.savez("results_interpolation_accuracy/" + taskName + "_results.npz", methods=methods, 
+                errors_methods=errors_methods, percentage_derivs_methods=percentage_derivs_methods, dyn_parameters=dyn_parameters)
 
     # Find the best hyper parameters for each method as per some pareto front optimisation
     # best_errors, best_percentage_derivs = return_best_pareto_front_settings(methods, avg_errors, avg_percentage_derivs)
@@ -62,9 +92,10 @@ def main():
 
     plot_results(taskName, methods, errors_methods, percentage_derivs_methods)
 
-def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_methods):
+def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_methods, dyn_parameters):
     best_errors_methods = []
     best_percentage_derivs_methods = []
+    best_dyn_parameters_methods = []
 
     for i in range(len(methods)):
         best_cost = None
@@ -77,11 +108,14 @@ def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_
                 best_cost = new_cost
                 best_error = error_methods[i][j]
                 best_percentage_derivs = percentage_derivs_methods[i][j]
+                best_dyn_parameters = dyn_parameters[i][j]
 
         best_errors_methods.append(best_error)
         best_percentage_derivs_methods.append(best_percentage_derivs)
+        best_dyn_parameters_methods.append(best_dyn_parameters)
 
-    return best_errors_methods, best_percentage_derivs_methods
+
+    return best_errors_methods, best_percentage_derivs_methods, best_dyn_parameters_methods
 
 def iter_error_method(task, numTrajectories):
     # Params for double pendulum
@@ -131,7 +165,7 @@ def iter_error_method(task, numTrajectories):
         dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
-        _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
+        _, _, _, task_errors, task_keyPoints, task_w_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
 
         for j in range(numMethods):
             errors[i][j] = task_errors[j]
@@ -145,7 +179,7 @@ def iter_error_method(task, numTrajectories):
     avg_errors = np.mean(errors, axis=0)
     avg_percentage_derivs = np.mean(percentage_derivs, axis=0)
 
-    return avg_errors, avg_percentage_derivs
+    return avg_errors, avg_percentage_derivs, dynParams
 
 def adaptive_acell_method(task, numTrajectories):
     # Params for double pendulum
@@ -195,7 +229,7 @@ def adaptive_acell_method(task, numTrajectories):
         dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
-        _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
+        _, _, _, task_errors, task_keyPoints, task_w_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
 
         for j in range(numMethods):
             errors[i][j] = task_errors[j]
@@ -209,7 +243,7 @@ def adaptive_acell_method(task, numTrajectories):
     avg_errors = np.mean(errors, axis=0)
     avg_percentage_derivs = np.mean(percentage_derivs, axis=0)
 
-    return avg_errors, avg_percentage_derivs
+    return avg_errors, avg_percentage_derivs, dynParams
 
 def adaptive_jerk_method(task, numTrajectories):
     # Params for double pendulum
@@ -259,7 +293,7 @@ def adaptive_jerk_method(task, numTrajectories):
         dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
-        _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
+        _, _, _, task_errors, task_keyPoints, task_w_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
 
         for j in range(numMethods):
             errors[i][j] = task_errors[j]
@@ -273,7 +307,7 @@ def adaptive_jerk_method(task, numTrajectories):
     avg_errors = np.mean(errors, axis=0)
     avg_percentage_derivs = np.mean(percentage_derivs, axis=0)
 
-    return avg_errors, avg_percentage_derivs
+    return avg_errors, avg_percentage_derivs, dynParams
 
 def mag_vel_change_method(task, numTrajectories):
         # Params for double pendulum
@@ -323,7 +357,7 @@ def mag_vel_change_method(task, numTrajectories):
         dof = myInterpolator.dof_vel
         horizon = myInterpolator.trajecLength
         total_column_derivs = dof * horizon
-        _, _, _, task_errors, task_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
+        _, _, _, task_errors, task_keyPoints, task_w_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
 
         for j in range(numMethods):
             errors[i][j] = task_errors[j]
@@ -337,7 +371,7 @@ def mag_vel_change_method(task, numTrajectories):
     avg_errors = np.mean(errors, axis=0)
     avg_percentage_derivs = np.mean(percentage_derivs, axis=0)
 
-    return avg_errors, avg_percentage_derivs
+    return avg_errors, avg_percentage_derivs, dynParams
 
 def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
 
@@ -358,17 +392,20 @@ def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
 
     
 if __name__ == "__main__":
-    # main()
+    main()
 
-    task_name = "panda_pushing_heavy_clutter"
+    task_name = "acrobot"
     data = np.load("results_interpolation_accuracy/" + task_name + "_results.npz")
     method_names = data["methods"]
+
     avg_errors = data["errors_methods"]
     avg_percentage_derivs = data["percentage_derivs_methods"]
+    dyn_parameters = data["dyn_parameters"]
 
-    best_errors, best_percentage_derivs = return_best_pareto_front_settings(method_names, avg_errors, avg_percentage_derivs)
+    best_errors, best_percentage_derivs, best_dyn_parameters = return_best_pareto_front_settings(method_names, avg_errors, avg_percentage_derivs, dyn_parameters)
     print(method_names)
     print("Best errors: ", best_errors)
     print("Best percentage derivs: ", best_percentage_derivs)
+    print("Best dyn parameters: ", best_dyn_parameters)
 
     plot_results(task_name, method_names, avg_errors, avg_percentage_derivs)
