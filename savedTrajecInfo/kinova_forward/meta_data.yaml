@@ -1,0 +1,8 @@
+robots:
+  kinova_gen8:
+    num_joints: 7
+    num_actuators: 7
+bodies:
+  ball:
+    positions: 3
+    orientations: 4

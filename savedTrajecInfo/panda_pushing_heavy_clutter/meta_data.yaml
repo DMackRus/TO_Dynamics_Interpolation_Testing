@@ -1,0 +1,30 @@
+robots:
+  panda:
+    num_joints: 7
+    num_actuators: 7
+bodies:
+  cylinder:
+    positions: 2
+    orientations: 0
+  obstacle1:
+    positions: 2
+    orientations: 0
+  obstacle2:
+    positions: 2
+    orientations: 0
+  obstacle3:
+    positions: 2
+    orientations: 0
+  obstacle4:
+    positions: 2
+    orientations: 0
+  obstacle5:
+    positions: 2
+    orientations: 0
+  obstacle6:
+    positions: 2
+    orientations: 0
+  obstacle7:
+    positions: 2
+    orientations: 0
+    

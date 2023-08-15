@@ -60,8 +60,8 @@ class interpolator():
                     self.dof_vel += 3
                     self.quat_w_indices.append(self.dof_pos - 1)
 
-        print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
-        print(f'quat w indices: {self.quat_w_indices}')
+        # print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
+        # print(f'quat w indices: {self.quat_w_indices}')
 
         # -------------------------------------------------------------------------------------------------
         
@@ -100,6 +100,7 @@ class interpolator():
         tempPandas = pandas.iloc[0:self.trajecLength]
         self.controls = tempPandas.to_numpy()
 
+        print(self.A_matrices.shape)
         self.A_matrices = self.A_matrices.reshape((self.trajecLength, self.dof_vel, self.numStates))
         self.B_matrices = self.B_matrices.reshape((self.trajecLength, self.dof_vel, self.num_ctrl))
 
@@ -637,8 +638,6 @@ class interpolator():
                     linInterpolationData[start_index + k, :, i + self.dof_pos] = startVals_vel + (diff_vel * (k / interval))
 
         # Handle any quaternions w interpolation
-        print("key_points_w: " + str(key_points_w)) 
-        print(f' w indices {self.quat_w_indices}')
         for i in range(len(self.quat_w_indices)):
             for j in range(len(key_points_w) - 1):
                 start_index = key_points_w[j]
@@ -654,21 +653,6 @@ class interpolator():
 
                 for k in range(1, interval):
                     linInterpolationData[start_index + k, :, self.quat_w_indices[i]] = startVals + (diff * (k / interval))
-
-
-
-                # for k in range(self.dof_vel):
-                #     startVals = A_matrices[start_index, (k * self.numStates) + self.quat_w_indices[i]]
-                #     print(f'time index: {start_index}, startVals')
-                #     endVals = A_matrices[end_index, (k * self.numStates) + self.quat_w_indices[i]]
-
-                #     diff = endVals - startVals
-                #     stepsBetween = end_index - start_index
-
-                #     linInterpolationData[start_index, (k * self.numStates) + self.quat_w_indices[i]] = startVals
-
-                #     for u in range(1, stepsBetween):
-                #         linInterpolationData[start_index + u, (k * self.numStates) + self.quat_w_indices[i]] = startVals + (diff * (u/stepsBetween))
 
         linInterpolationData[len(linInterpolationData) - 1,:] = linInterpolationData[len(linInterpolationData) - 2,:]
 
