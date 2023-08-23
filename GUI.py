@@ -22,12 +22,16 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
+        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter",
+                                "panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter", "kinova_forward", "kinova_side", "kinova_lift"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005], 
                                      [10, 200, 0.005, 0.005, 0.005], 
+                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [2, 10, 0.0005, 0.0005, 0.0005],
@@ -185,7 +189,7 @@ class dynamicsGUI():
 
         self.label_tasks = tk.Label(self.AB_widgetsFrame, text = "Task Name", width=int(settingsWidth * 2))
         self.entry_tasks = AutocompleteEntry(self.AB_widgetsFrame, width=int(settingsWidth * 2), completevalues=self.taskNames)
-        self.entry_tasks.insert(0, self.taskNames[7]) # 7 kinova side
+        self.entry_tasks.insert(0, self.taskNames[1])
         self.label_trajecNum = tk.Label(self.AB_widgetsFrame, text = "Trajectory Number", width=settingsWidth)
         self.entry_trajecNum = tk.Entry(self.AB_widgetsFrame, width=settingsWidth)
         self.entry_trajecNum.insert(1, "1")
@@ -564,6 +568,7 @@ class dynamicsGUI():
 
         row = int(self.entry_displayIndexRow.get())
         col = int(self.entry_displayIndexCol.get())
+        keyPoints_col = 0
 
         # get the column
         # check it against size of dof vel
@@ -575,9 +580,11 @@ class dynamicsGUI():
             displayKeypoints = self.keyPoints[self.interpTypeNum]
             # 0 -> dof_pos - 1, dof_pos -> dof_pos + dof_vel - 1
             if(col >= self.dof_pos):
-                col = col - self.dof_pos
+                keyPoints_col = col - self.dof_pos
+            else:
+                keyPoints_col = col
             # displayKeypoints = displayKeypoints[col % self.dof_vel]
-            displayKeypoints = displayKeypoints[col]
+            displayKeypoints = displayKeypoints[keyPoints_col]
             highlightedIndices = np.copy(self.unfilteredTrajec[displayKeypoints, row, col])
 
         self.numEvals = len(displayKeypoints)
@@ -593,7 +600,7 @@ class dynamicsGUI():
         # Plot keypoints
         self.plot_AB.scatter(displayKeypoints, highlightedIndices, s=10, color = self.yellow, zorder=10)
 
-        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum,:, row, col], color = self.yellow, label = 'Interpolated')
+        self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum, :, row, col], color = self.yellow, label = 'Interpolated')
         self.plot_AB.legend(loc='upper right')
         self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
 

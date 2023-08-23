@@ -15,19 +15,28 @@ def main():
     # taskName = "acrobot"
     taskName = "panda_pushing_heavy_clutter"
 
-    # all_tasks = ["acrobot", "doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter"]
-    all_tasks = ["kinova_forward", "kinova_side", "kinova_lift"]
+    # all_tasks = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter"]
+    # all_tasks = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter"]
+    # all_tasks = ["acrobot", "kinova_forward", "kinova_side", "kinova_lift"]
+    all_tasks = ["panda_pushing_heavy_clutter"]
 
 
 
     for taskName in all_tasks:
         print("----------------------- " + taskName + " -----------------------")
-        numTrajectories = 8
+        numTrajectories = 100
 
         methods = []
         errors_methods = []
         percentage_derivs_methods = []
         dyn_parameters = []
+
+        error_set_interval = []
+        percentage_derivs_set_interval = []
+
+        # -------------- Set Interval ------------------------
+        # methods.append("Set Interval")
+        error_set_interval, percentage_derivs_set_interval, dynParams = set_interval_method(taskName, numTrajectories)
 
         # ------------ Adaptive jerk --------------------------
         methods.append("Adaptive Jerk")
@@ -91,6 +100,9 @@ def main():
         np.savez("results_interpolation_accuracy/" + taskName + "_results.npz", methods=methods, 
                     errors_methods=errors_methods, percentage_derivs_methods=percentage_derivs_methods, dyn_parameters=dyn_parameters)
 
+        # Save set inteval methods in separate file due to incompatible lengths
+        np.savez("results_interpolation_accuracy/" + taskName + "_set_interval.npz", error_set_interval=error_set_interval, percentage_derivs_set_interval=percentage_derivs_set_interval)
+
 
     # plot_results(taskName, methods, errors_methods, percentage_derivs_methods)
 
@@ -105,7 +117,7 @@ def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_
         best_error = []
 
         for j in range(len(error_methods[i])):
-            new_cost = (100 * error_methods[i][j]) + percentage_derivs_methods[i][j]
+            new_cost = pareto_cost_formula(error_methods[i][j], percentage_derivs_methods[i][j])
             if(best_cost == None or (new_cost < best_cost)):
                 best_cost = new_cost
                 best_error = error_methods[i][j]
@@ -118,6 +130,48 @@ def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_
 
 
     return best_errors_methods, best_percentage_derivs_methods, best_dyn_parameters_methods
+
+def pareto_cost_formula(error, percentage_derivs):
+    cost = 0.0
+
+    cost = (100 * error) + percentage_derivs
+
+
+    return cost
+
+def set_interval_method(task, numTrajectories):
+    minN = [2, 5, 10, 15, 20]
+
+    numMethods = len(minN)
+    dynParams = [None] * numMethods
+
+    for i in range(len(minN)):
+        dynParams[i] = derivative_interpolator("setInterval", minN[i], 0, 0, 0, 0, 0)
+    
+    errors = np.zeros((numTrajectories, numMethods))
+    percentage_derivs = np.zeros((numTrajectories, numMethods))
+    for i in range(numTrajectories):
+        myInterpolator = interpolator(task, i)
+        dof = myInterpolator.dof_vel
+        horizon = myInterpolator.trajecLength
+        total_column_derivs = dof * horizon
+        _, _, _, task_errors, task_keyPoints, task_w_keyPoints = myInterpolator.interpolateTrajectory(0, dynParams)
+
+        for j in range(numMethods):
+            errors[i][j] = task_errors[j]
+            sum_keyPoints = 0
+            for k in range(dof):
+                sum_keyPoints += len(task_keyPoints[j][k])
+
+            percentage_derivs[i][j] = (sum_keyPoints / total_column_derivs) * 100
+
+        print(f'set interval {i/numTrajectories * 100}%')
+
+    # Calculate the average error and percentage of derivatives
+    avg_errors = np.mean(errors, axis=0)
+    avg_percentage_derivs = np.mean(percentage_derivs, axis=0)
+
+    return avg_errors, avg_percentage_derivs, dynParams
 
 def iter_error_method(task, numTrajectories):
     # Params for double pendulum
@@ -452,12 +506,12 @@ def mag_vel_change_method(task, numTrajectories):
 
     return avg_errors, avg_percentage_derivs, dynParams
 
-def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
+def plot_results(task, methodNames, avg_errors, avg_percentage_derivs, set_interval_errors, set_interval_percentage_derivs):
 
     # print("Average errors: ", avg_errors)
     # print("Average percetn derivs:: ", avg_percentage_derivs)
 
-    colors = ['#D96E26', '#38D926', '#2691D9', '#C726D9']
+    colors = ['#D96E26', '#38D926', '#2691D9', '#C726D9', '#000000']
 
     # plot the reuslts - scatter graph
     plt.title("Average Error vs Percentage of Derivatives - " + str(task))
@@ -465,6 +519,7 @@ def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
     plt.ylabel("Average MSE")
     for i in range(len(methodNames)):
         plt.scatter(avg_percentage_derivs[i], avg_errors[i], color = colors[i], label = methodNames[i])
+    plt.scatter(set_interval_percentage_derivs, set_interval_errors, color = colors[-1], label = "Set Interval")
     plt.legend()
     plt.savefig("results_interpolation_accuracy/" + str(task) + ".png")
     plt.show()
@@ -473,18 +528,36 @@ def plot_results(task, methodNames, avg_errors, avg_percentage_derivs):
 if __name__ == "__main__":
     # main()
 
-    task_name = "kinova_side"
-    data = np.load("results_interpolation_accuracy/" + task_name + "_results.npz")
-    method_names = data["methods"]
+    task_names = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "acrobot", "kinova_side", "kinova_forward", "kinova_lift"]
 
-    avg_errors = data["errors_methods"]
-    avg_percentage_derivs = data["percentage_derivs_methods"]
-    dyn_parameters = data["dyn_parameters"]
+    for task in task_names:
+        data = np.load("results_interpolation_accuracy/" + task + "_results.npz")
+        data_set_interval = np.load("results_interpolation_accuracy/" + task + "_set_interval.npz")
+        method_names = data["methods"]
 
-    best_errors, best_percentage_derivs, best_dyn_parameters = return_best_pareto_front_settings(method_names, avg_errors, avg_percentage_derivs, dyn_parameters)
-    print(method_names)
-    print("Best errors: ", best_errors)
-    print("Best percentage derivs: ", best_percentage_derivs)
-    print("Best dyn parameters: ", best_dyn_parameters)
+        avg_errors = data["errors_methods"]
+        avg_percentage_derivs = data["percentage_derivs_methods"]
+        dyn_parameters = data["dyn_parameters"]
 
-    plot_results(task_name, method_names, avg_errors, avg_percentage_derivs)
+        best_errors, best_percentage_derivs, best_dyn_parameters = return_best_pareto_front_settings(method_names, avg_errors, avg_percentage_derivs, dyn_parameters)
+        print("------------------------------------ " + task + " ------------------------------------")
+        print(method_names)
+        print("Best errors: ", best_errors)
+        print("Best percentage derivs: ", best_percentage_derivs)
+        print("Best dyn parameters: ", best_dyn_parameters)
+
+
+        best_best_method = None
+        best_cost = np.inf
+        for i in range(len(method_names)):
+            new_cost = pareto_cost_formula(best_errors[i], best_percentage_derivs[i])
+            if(new_cost < best_cost):
+                best_cost = new_cost
+                best_best_method = method_names[i]
+
+        print("Best best method: ", best_best_method)
+
+        set_interval_errors = data_set_interval["error_set_interval"]
+        set_interval_percentage_derivs = data_set_interval["percentage_derivs_set_interval"]
+
+        plot_results(task, method_names, avg_errors, avg_percentage_derivs, set_interval_errors, set_interval_percentage_derivs)

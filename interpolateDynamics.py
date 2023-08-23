@@ -71,14 +71,16 @@ class interpolator():
         self.trajecLength = rows 
 
         tempPandas = pandas.iloc[0:self.trajecLength]
-        self.A_matrices = tempPandas.to_numpy()
+        print(f'a matrices pandas shape: {tempPandas.shape}')
+        self.A_matrices_load = tempPandas.to_numpy()
+        print(f'a matrices shape: {self.A_matrices_load.shape}')
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
 
         tempPandas = pandas.iloc[0:self.trajecLength]
-        self.B_matrices = tempPandas.to_numpy()
+        self.B_matrices_load = tempPandas.to_numpy()
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/states.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -100,9 +102,23 @@ class interpolator():
         tempPandas = pandas.iloc[0:self.trajecLength]
         self.controls = tempPandas.to_numpy()
 
-        print(self.A_matrices.shape)
-        self.A_matrices = self.A_matrices.reshape((self.trajecLength, self.dof_vel, self.numStates))
-        self.B_matrices = self.B_matrices.reshape((self.trajecLength, self.dof_vel, self.num_ctrl))
+        # self.A_matrices = self.A_matrices.reshape((self.trajecLength, self.dof_vel, self.numStates))
+        # self.B_matrices = self.B_matrices.reshape((self.trajecLength, self.dof_vel, self.num_ctrl))
+
+        self.A_matrices = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
+        self.B_matrices = np.zeros((self.trajecLength, self.dof_vel, self.num_ctrl))
+
+        #reshape 2nd index into two indices
+        # self.A_matrices = self.A_matrices_load.reshape((self.trajecLength, self.dof_vel, self.numStates))
+        for i in range(self.trajecLength):
+            for j in range(self.dof_vel):
+                for k in range(self.numStates):
+                    print(j*self.numStates + k)
+                    self.A_matrices[i][j][k] = self.A_matrices_load[i][j*self.numStates + k]
+
+        # column 0 
+        # for i in range(self.trajecLength):
+            
 
         if(0):
             T = 5.0         # Sample Period
