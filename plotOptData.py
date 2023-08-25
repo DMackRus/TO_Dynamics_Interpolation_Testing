@@ -75,7 +75,10 @@ def plotOneTask(taskName, testNumber):
     file.close()
 
     DATA_FIELDS = 5 # opt time, cost reduction, percentage derivs, time getting derivs, numIterations
-    OPTIMISERS_USED = 5
+
+    # Get the number of optimiser automatically depending on number of columns in data
+    OPTIMISERS_USED = int(len(headers[0])/DATA_FIELDS)
+    print("OPTIMISERS USED: " + str(OPTIMISERS_USED))
 
     lenHeaders = len(headers[0])
     labels = []
@@ -88,7 +91,6 @@ def plotOneTask(taskName, testNumber):
     data = data[0]
 
     numTrajecs = len(data) - 2
-    print("num trajecs: " + str(numTrajecs))
 
     optTimes = np.zeros((numTrajecs, OPTIMISERS_USED))
     costReductions = np.zeros((numTrajecs, OPTIMISERS_USED))
@@ -108,18 +110,35 @@ def plotOneTask(taskName, testNumber):
             numIterations[i, j] = data[i + 2, (j * DATA_FIELDS) + 4]
 
     # Format the cost reductions with reference to the baseline cost
-    for i in range(numTrajecs):
-        for j in range(OPTIMISERS_USED):
-            if j == 1:
-                print("--------------------------------------------------------")
-                print("index: " + str(i))
-                print("cost reduction of index: " + str(costReductions[i, j]))
-                print("cost reduction of baseline: " + str(costReductions[i, 0]))
-            scaledCosts[i, j] = -((costReductions[i, j] - costReductions[i, 0]) / costReductions[i, 0]) * 100
+    # for i in range(numTrajecs):
+    #     for j in range(OPTIMISERS_USED):
+    #         if j == 1:
+    #             print("--------------------------------------------------------")
+    #             print("index: " + str(i))
+    #             print("cost reduction of index: " + str(costReductions[i, j]))
+    #             print("cost reduction of baseline: " + str(costReductions[i, 0]))
+    #         scaledCosts[i, j] = -((costReductions[i, j] - costReductions[i, 0]) / costReductions[i, 0]) * 100
 
-            if j == 1:
+    #         if j == 1:
 
-                print("cost reduction of index after scaling: " + str(scaledCosts[i, j]))
+    #             print("cost reduction of index after scaling: " + str(scaledCosts[i, j]))
+
+    # Calculate mean and standard deviation of times and cost reducitons for all methods
+    meanOptTimes = np.zeros(OPTIMISERS_USED)
+    stdOptTimes = np.zeros(OPTIMISERS_USED)
+    meanCostReductions = np.zeros(OPTIMISERS_USED)
+    stdCostReductions = np.zeros(OPTIMISERS_USED)
+
+    for i in range(OPTIMISERS_USED):
+        meanOptTimes[i] = np.mean(optTimes[:, i])
+        stdOptTimes[i] = np.std(optTimes[:, i])
+        meanCostReductions[i] = np.mean(costReductions[:, i])
+        stdCostReductions[i] = np.std(costReductions[:, i])
+
+    print("mean opt times: " + str(meanOptTimes))
+    print("std opt times: " + str(stdOptTimes))
+    print("mean cost reductions: " + str(meanCostReductions))
+    print("std cost reductions: " + str(stdCostReductions))
 
 
     fig, axes = plt.subplots(3, 1, figsize = (18,8))
