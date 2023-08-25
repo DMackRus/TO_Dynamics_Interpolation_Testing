@@ -4,7 +4,6 @@ from numpy import genfromtxt
 import itertools
 import pandas as pd
 import glob
-from scipy import signal
 import math
 import csv
 
@@ -130,8 +129,8 @@ def plotOneTask(taskName, testNumber):
     stdCostReductions = np.zeros(OPTIMISERS_USED)
 
     for i in range(OPTIMISERS_USED):
-        meanOptTimes[i] = np.mean(optTimes[:, i])
-        stdOptTimes[i] = np.std(optTimes[:, i])
+        meanOptTimes[i] = np.mean(optTimes[:, i]) / 1000
+        stdOptTimes[i] = np.std(optTimes[:, i]) / 1000
         meanCostReductions[i] = np.mean(costReductions[:, i])
         stdCostReductions[i] = np.std(costReductions[:, i])
 
@@ -274,7 +273,7 @@ def plotResults():
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
     # taskNames = ["panda_pushing"]
-    taskNames = ["doublePendulum"]
+    taskNames = ["panda_reaching"]
     testNumber = 9
 
     for i in range(len(taskNames)):
