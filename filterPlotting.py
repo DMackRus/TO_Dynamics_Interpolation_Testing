@@ -1,20 +1,24 @@
-def main():
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy import genfromtxt
+
+def pltFilterData(modelName):
     # data_list = np.array([[0, 0, 0]])
     # data_2 = np.array([[1, 1, 1]])
 
     # test = np.concatenate((data_list, data_2), axis=0)
     # print(test)
-    unfiltered_data = returnUnfilteredLists()
+    unfiltered_data = returnUnfilteredLists(modelName)
     # tests = ["1Hz","50Hz","100Hz","200Hz", "500Hz"]
-    tests = ["0.05", "0.1", "0.15", "0.2", "0.25"]
+    tests = ["FIR_0", "FIR_1", "FIR_2", "FIR_3", "FIR_4"]
 
     for i in range(len(tests)):
         fileExtension = tests[i]
 
-        filtered_data = returnFilteredLists(fileExtension)
+        filtered_data = returnFilteredLists(modelName, fileExtension)
         avgCostDiff, avgFiltered, avgUnfiltered = averageDiffPerIteration(unfiltered_data, filtered_data)
 
-        plt.plot(avgCostDiff, label = 'cost diff')
+        # plt.plot(avgCostDiff, label = 'cost diff')
         plt.plot(avgUnfiltered, label = 'unfiltered')
         plt.plot(avgFiltered, label = 'filtered')
         plt.legend()
@@ -23,13 +27,13 @@ def main():
 
     # average the differnece between the two numbers
 
-    for i in range(50):
+    # for i in range(50):
 
-        plt.plot(filtered_data[i], label = 'filtered')
-        plt.plot(unfiltered_data[i], label = 'unfiltered')
-        plt.title("plot " + str(i))
-        plt.legend()
-        plt.show()
+    #     plt.plot(filtered_data[i], label = 'filtered')
+    #     plt.plot(unfiltered_data[i], label = 'unfiltered')
+    #     plt.title("plot " + str(i))
+    #     plt.legend()
+    #     plt.show()
 
 def averageDiffPerIteration(unfiltered, filtered):
     avgCostDiff = []
@@ -59,13 +63,13 @@ def averageDiffPerIteration(unfiltered, filtered):
 
     return avgCostDiff, avgFiltered, avgUnfiltered
 
-def returnFilteredLists(fileExtension):
+def returnFilteredLists(modelName, fileExtension):
     data_list = []
     maxLength = 0
+    num_trajecs = 100
 
-    # Load the 50 csvs
-    for i in range(50):
-        temp = np.array([genfromtxt('data/filtering_' + fileExtension + '/' + str(i) + '.csv', delimiter=',')])
+    for i in range(num_trajecs):
+        temp = np.array([genfromtxt('data/filtering/' + modelName + "/" + fileExtension + '/' + str(i) + '.csv', delimiter=',')])
         temp = np.delete(temp, -1)
         
         tempList = list(temp)
@@ -77,12 +81,12 @@ def returnFilteredLists(fileExtension):
     maxLength = 9
     print("max length is: " + str(maxLength))
 
-    for i in range(50):
+    for i in range(num_trajecs):
         maxVal = data_list[i][0]
         for j in range(len(data_list[i])):
             data_list[i][j] = data_list[i][j] / maxVal
 
-    for i in range(50):
+    for i in range(num_trajecs):
         lenofCurrent = len(data_list[i]) - 1
         diff = maxLength - lenofCurrent
         for j in range(diff):
@@ -90,13 +94,14 @@ def returnFilteredLists(fileExtension):
 
     return data_list
 
-def returnUnfilteredLists():
+def returnUnfilteredLists(modelName):
     data_list = []
     maxLength = 0
+    num_trajecs = 100
 
-    # Load the 50 csvs
-    for i in range(50):
-        temp = np.array([genfromtxt('data/no_filtering/' + str(i) + '.csv', delimiter=',')])
+
+    for i in range(num_trajecs):
+        temp = np.array([genfromtxt('data/filtering/' + modelName + "/none/" + str(i) + '.csv', delimiter=',')])
         temp = np.delete(temp, -1)
         
         tempList = list(temp)
@@ -108,12 +113,12 @@ def returnUnfilteredLists():
     maxLength = 9
     print("max length is: " + str(maxLength))
 
-    for i in range(50):
+    for i in range(num_trajecs):
         maxVal = data_list[i][0]
         for j in range(len(data_list[i])):
             data_list[i][j] = data_list[i][j] / maxVal
 
-    for i in range(50):
+    for i in range(num_trajecs):
         lenofCurrent = len(data_list[i]) - 1
         diff = maxLength - lenofCurrent
         for j in range(diff):
@@ -137,3 +142,7 @@ def makeFilter():
     a = -discreteLowPass.den;
     print("Filter coefficients b_i: " + str(b))
     print("Filter coefficients a_i: " + str(a[1:]))
+
+if __name__ == "__main__":
+    pltFilterData("push_nCl")
+    # pltFilterData("push_mCl")

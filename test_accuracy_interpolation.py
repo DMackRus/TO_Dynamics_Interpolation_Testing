@@ -18,9 +18,9 @@ def main():
     # all_tasks = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter"]
     # all_tasks = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter"]
     # all_tasks = ["acrobot", "kinova_forward", "kinova_side", "kinova_lift"]
-    all_tasks = ["panda_pushing_heavy_clutter"]
-
-
+    # all_tasks = ["panda_pushing_heavy_clutter"]
+    # all_tasks = ["box_sweep"]
+    all_tasks = ["walker"]
 
     for taskName in all_tasks:
         print("----------------------- " + taskName + " -----------------------")
@@ -132,10 +132,7 @@ def return_best_pareto_front_settings(methods, error_methods, percentage_derivs_
     return best_errors_methods, best_percentage_derivs_methods, best_dyn_parameters_methods
 
 def pareto_cost_formula(error, percentage_derivs):
-    cost = 0.0
-
     cost = (100 * error) + percentage_derivs
-
 
     return cost
 
@@ -199,6 +196,16 @@ def iter_error_method(task, numTrajectories):
         iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
         minN = [2, 5, 10, 15, 20]
         maxN = 200
+
+    elif(task == "box_sweep"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+
+    elif(task == "walker"):
+        iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        minN = [1, 2, 5, 10, 20]
+        maxN = 20
 
     elif(task == "acrobot"):
         iter_error_threshold = [0.1, 0.01, 0.005, 0.001, 0.0005, 0.0001]
@@ -282,6 +289,16 @@ def adaptive_acell_method(task, numTrajectories):
         minN = [2, 5, 10, 15, 20]
         maxN = 200
         acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "box_sweep"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+
+    elif(task == "walker"):
+        acellThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+        minN = [1, 2, 5, 10, 20]
+        maxN = 20
 
     elif(task == "acrobot"):
         minN = [2, 5, 10, 15, 20]
@@ -367,6 +384,16 @@ def adaptive_jerk_method(task, numTrajectories):
         maxN = 200
         jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
 
+    elif(task == "box_sweep"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        jerkThreshold = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+
+    elif(task == "walker"):
+        jerkThreshold = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25]
+        minN = [1, 2, 5, 10, 20]
+        maxN = 20
+
     elif(task == "acrobot"):
         minN = [2, 5, 10, 15, 20]
         maxN = 200
@@ -450,6 +477,17 @@ def mag_vel_change_method(task, numTrajectories):
         maxN = 200
         mag_vel_change = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
 
+    elif(task == "box_sweep"):
+        minN = [2, 5, 10, 15, 20]
+        maxN = 200
+        mag_vel_change = [0.1, 0.5, 1, 1.5, 2, 2.5]
+
+    elif(task == "walker"):
+        minN = [1, 2, 5, 10, 15]
+        maxN = 20
+        mag_vel_change = [0.1, 0.2, 0.5, 1, 1.5, 2]
+
+
     elif(task == "acrobot"):
         minN = [2, 5, 10, 15, 20]
         maxN = 200
@@ -528,7 +566,8 @@ def plot_results(task, methodNames, avg_errors, avg_percentage_derivs, set_inter
 if __name__ == "__main__":
     # main()
 
-    task_names = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "acrobot", "kinova_side", "kinova_forward", "kinova_lift"]
+    # task_names = ["doublePendulum", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "acrobot", "kinova_side", "kinova_forward", "kinova_lift"]
+    task_names = ["box_sweep"]
 
     for task in task_names:
         data = np.load("results_interpolation_accuracy/" + task + "_results.npz")

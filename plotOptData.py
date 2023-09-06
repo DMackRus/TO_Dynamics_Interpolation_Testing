@@ -99,7 +99,6 @@ def plotOneTask(taskName, testNumber):
     avgTimeGettingDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
     numIterations = np.zeros((numTrajecs, OPTIMISERS_USED))
 
-
     for i in range(numTrajecs):
         for j in range(OPTIMISERS_USED):
 
@@ -157,11 +156,8 @@ def plotOneTask(taskName, testNumber):
     orange = "#edb83b"
     bp3 = box_plot(numIterations, orange, yAxisLabel, axes[2], labels)
 
-
-
     fig.suptitle(taskName + " - optimisation information", fontsize=16)
     plt.show()
-
 
     fig, axes = plt.subplots(2, 1, figsize = (18,8))
     boxPlotTitle = "Average percentage calculated derivatives against interpolation methods " + "panda_pushing_clutter"
@@ -314,8 +310,6 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False, baselin
         ax.set_yscale('log')
     black = "#1c1b1a"
 
-    
-    
     for element in ['medians']:
         plt.setp(bp[element], color=black)
 
@@ -339,25 +333,10 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False, baselin
     index = 0
     for patch in bp['boxes']:
         patch.set(facecolor=normalPosterColour)
-        # if(index == 0):
-        #     patch.set(facecolor=normalPosterColour)
-        # elif(index == numxAxis - 1):
-
-        #     patch.set(facecolor=normalPosterColour)
-        # else:
-        #      patch.set(facecolor=normalPosterColour)
-
-        # index = index + 1   
 
     labelSize = 11
 
-    #ax = plt.gca()
-    #ax.set_facecolor(backgroundColour)
-
-    # Make this label bigger
-    # ax.set(ylabel= yAxisTitle)
     ax.set_ylabel(yAxisTitle, fontsize=labelSize)
-    # ax.set_title(yAxisTitle)
 
     if(baseline_yLine):
         ax.axhline(y=0, color=baselineColor, linewidth=1.5, alpha=0.5)

@@ -1,0 +1,4 @@
+robots:
+  acrobot:
+    num_joints: 2
+    num_actuators: 1

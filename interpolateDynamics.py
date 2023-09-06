@@ -71,9 +71,7 @@ class interpolator():
         self.trajecLength = rows 
 
         tempPandas = pandas.iloc[0:self.trajecLength]
-        print(f'a matrices pandas shape: {tempPandas.shape}')
         self.A_matrices_load = tempPandas.to_numpy()
-        print(f'a matrices shape: {self.A_matrices_load.shape}')
 
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/B_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -113,7 +111,6 @@ class interpolator():
         for i in range(self.trajecLength):
             for j in range(self.dof_vel):
                 for k in range(self.numStates):
-                    print(j*self.numStates + k)
                     self.A_matrices[i][j][k] = self.A_matrices_load[i][j*self.numStates + k]
 
         # column 0 
