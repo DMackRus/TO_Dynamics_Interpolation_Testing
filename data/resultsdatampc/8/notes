@@ -1,0 +1,2 @@
+changed get derivatives to a thread system rather than pragma omp. 
+Pragma omp still used for cost derivatives in this data

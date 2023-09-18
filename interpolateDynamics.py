@@ -100,9 +100,6 @@ class interpolator():
         tempPandas = pandas.iloc[0:self.trajecLength]
         self.controls = tempPandas.to_numpy()
 
-        # self.A_matrices = self.A_matrices.reshape((self.trajecLength, self.dof_vel, self.numStates))
-        # self.B_matrices = self.B_matrices.reshape((self.trajecLength, self.dof_vel, self.num_ctrl))
-
         self.A_matrices = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
         self.B_matrices = np.zeros((self.trajecLength, self.dof_vel, self.num_ctrl))
 
@@ -112,6 +109,12 @@ class interpolator():
             for j in range(self.dof_vel):
                 for k in range(self.numStates):
                     self.A_matrices[i][j][k] = self.A_matrices_load[i][j*self.numStates + k]
+
+        # load the B_matrices values
+        for i in range(self.trajecLength):
+            for j in range(self.dof_vel):
+                for k in range(self.num_ctrl):
+                    self.B_matrices[i][j][k] = self.B_matrices_load[i][j*self.num_ctrl + k]
 
         # column 0 
         # for i in range(self.trajecLength):
@@ -624,10 +627,9 @@ class interpolator():
         
         return mean_sq_diff
     
-    def generateLinInterpolation(self, A_matrices, reEvaluationIndicies, key_points_w):
-        linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
-
-        # print(reEvaluationIndicies[0])
+    def generateLinInterpolation(self, A_matrices, B_matrices, reEvaluationIndicies, key_points_w):
+        A_linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
+        B_linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.num_ctrl))
 
         for i in range(self.dof_vel):
             for j in range(len(reEvaluationIndicies[i]) - 1):

@@ -82,6 +82,10 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
     avgTimeBPBaseline = np.zeros((OPTIMISERS_USED))
     avgTimeFPBaseline = np.zeros((OPTIMISERS_USED))
 
+    avgTimesDerivsOther = np.zeros((OPTIMISERS_USED))
+    avgTimesBPOther = np.zeros((OPTIMISERS_USED))
+    avgTimesFPOther = np.zeros((OPTIMISERS_USED))
+
     for i in range(len(methods)):
 
         dataNumber = str(taskNumber)
@@ -92,18 +96,26 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
             sizeData = False
             finalCostsMethods = np.zeros((len(methods), OPTIMISERS_USED))
             avgHzMethods = np.zeros((len(methods), OPTIMISERS_USED))
+
             avgTimeDerivsBaseline = np.zeros((OPTIMISERS_USED))
             avgTimeBPBaseline = np.zeros((OPTIMISERS_USED))
             avgTimeFPBaseline = np.zeros((OPTIMISERS_USED))
+
+            avgTimesDerivsOther = np.zeros((OPTIMISERS_USED))
+            avgTimesBPOther = np.zeros((OPTIMISERS_USED))
+            avgTimesFPOther = np.zeros((OPTIMISERS_USED))
 
         numTrajecs = len(data) - 2
 
         finalCosts = np.zeros((numTrajecs, OPTIMISERS_USED))
         controlFrequencies = np.zeros((numTrajecs, OPTIMISERS_USED))
         avgPercentDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
+
         avgTimeDerivs = np.zeros((numTrajecs, OPTIMISERS_USED))
         avgTimeBP = np.zeros((numTrajecs, OPTIMISERS_USED))
         avgTimeFP = np.zeros((numTrajecs, OPTIMISERS_USED))
+
+        
 
         for k in range(numTrajecs):
             for j in range(OPTIMISERS_USED):
@@ -135,6 +147,12 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
                 avgTimeBPBaseline[j] = np.mean(avgTimeBP[:, j])
                 avgTimeFPBaseline[j] = np.mean(avgTimeFP[:, j])
 
+        if methods[i] == "SI20":
+            for j in range(OPTIMISERS_USED):
+                avgTimesDerivsOther[j] = np.mean(avgTimeDerivs[:, j])
+                avgTimesBPOther[j] = np.mean(avgTimeBP[:, j])
+                avgTimesFPOther[j] = np.mean(avgTimeFP[:, j])
+
         print("-------------------" + methods[i] + "-------------------")
         # for j in range(OPTIMISERS_USED):
         #     print("Optimiser: " + labels[j])
@@ -151,38 +169,43 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
 
     colors = DIVERGENT_COLORS
 
-    fig, axes = plt.subplots(2, 1, figsize = (6, 9))
-    plotTitle = "Final cost against horizon length " + taskName
-    yAxisLabel = "Final cost"
-    linegraph1 = linegraph(finalCostsMethods, axes[0], colors, yAxisLabel, "horizon", labels, methods, logyAxis = False)
+    # fig, axes = plt.subplots(2, 1, figsize = (6, 7))
+    # plotTitle = "Final cost against horizon length " + taskName
+    # yAxisLabel = "Final cost"
+    # linegraph1 = linegraph(finalCostsMethods, axes[0], colors, yAxisLabel, "horizon", labels, methods, logyAxis = False)
 
-    boxPlotTitle = "Control frequency against interpolation methods " + taskName
-    yAxisLabel = "Control frequency (Hz)"
-    linegraph2 = linegraph(avgHzMethods, axes[1], colors, yAxisLabel, "horizon", labels, methods)
+    # boxPlotTitle = "Control frequency against interpolation methods " + taskName
+    # yAxisLabel = "Control frequency (Hz)"
+    # linegraph2 = linegraph(avgHzMethods, axes[1], colors, yAxisLabel, "horizon", labels, methods)
 
-    fig.suptitle(taskName + " - MPC iteration times (baseline)", fontsize=16)
-    plt.show()
+    # fig.suptitle(taskName + " - MPC horizons for keypoint methods", fontsize=16)
+    # plt.show()
 
 
     # Create stacked bar plot time getting derivs, bp and fp
-    fig, axes = plt.subplots(1, 1, figsize = (8, 6))
+    fig, axes = plt.subplots(1, 1, figsize = (7, 6))
     plotTitle = "Time taken to get derivatives, backprop and forward prop against horizon length " + taskName
     yAxisLabel = "Time (ms)"
-    stackedData = np.zeros((3, OPTIMISERS_USED))
+    stackedData = np.zeros((3, 2, OPTIMISERS_USED))
 
     print("avg time getting derivs: " + str(avgTimeDerivsBaseline))
     print("avg time backprop: " + str(avgTimeBPBaseline))
     print("avg time forward prop: " + str(avgTimeFPBaseline))
 
-    stackedData[0, :] = avgTimeDerivsBaseline
-    stackedData[1, :] = avgTimeBPBaseline
-    stackedData[2, :] = avgTimeFPBaseline
+    stackedData[0, 0, :] = avgTimeDerivsBaseline
+    stackedData[1, 0, :] = avgTimeBPBaseline
+    stackedData[2, 0, :] = avgTimeFPBaseline
 
-    stackLabels = ["Derivatives", "Backprop", "Forward prop"]
+    print("avg time getting derivs: " + str(avgTimesDerivsOther))
+    stackedData[0, 1, :] = avgTimesDerivsOther
+    stackedData[1, 1, :] = avgTimesBPOther
+    stackedData[2, 1, :] = avgTimesFPOther
+
+    stackLabels = ["Derivatives", "BP", "FP"]
 
     stackedBarGraph(stackedData, axes, colors, yAxisLabel, "horizon", labels, stackLabels)
 
-    fig.suptitle(taskName + " - MPC horizon data", fontsize=16)
+    fig.suptitle(taskName + " - MPC iterations times", fontsize=16)
     plt.show()
 
 def getDataandLabels(filename):
@@ -206,6 +229,7 @@ def getDataandLabels(filename):
     return data, labels
     
 if __name__ == "__main__":
-    methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "magvel_change"]
-    plotMPCHorizonData("walker",  methods, 4)
+    # methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "magvel_change", "iterative_error"]
+    methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "SI20", "magvel_change"]
+    plotMPCHorizonData("walker",  methods, 7)
     # plotMPCData("walker", 3)

@@ -1,0 +1,10 @@
+acrobot hyper parameters for testing
+
+adaptive jerk 
+1 -> 10
+magvel_change 
+1 -> 10
+iterative error
+1 -> 10
+
+all other values are in the yaml file

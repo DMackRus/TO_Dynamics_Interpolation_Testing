@@ -7,62 +7,6 @@ import glob
 import math
 import csv
 
-# def plotResults():
-#     # Load data into numpy array
-#     taskName = "panda_pushing_clutter"
-#     # taskName = "panda_pushing"
-#     # taskName = "doublePendulum"
-
-#     data = np.array([genfromtxt('data/resultsData/no_filtering/' + taskName + '_testingData.csv', delimiter = ',')])
-
-#     file = open('data/resultsData/no_filtering/' + taskName + '_testingData.csv', "r")
-#     headers = list(csv.reader(file, delimiter=","))
-#     file.close()
-
-#     print(headers[0])
-#     lenHeaders = len(headers[0])
-#     labels = []
-#     for i in range(int(lenHeaders/4) - 1):
-#         labels.append(headers[0][i*4])
-
-
-#     print(labels)
-
-#     data = data[0]
-
-#     numTrajecs = len(data) - 2
-#     print("num trajecs: " + str(numTrajecs))
-
-#     optTimes = np.zeros((numTrajecs, 3))
-#     costReductions = np.zeros((numTrajecs, 3))
-#     avgNumDerivs = np.zeros((numTrajecs, 3))
-#     avgTimeGettingDerivs = np.zeros((numTrajecs, 3))
-
-#     for i in range(numTrajecs):
-#         for j in range(3):
-
-#             optTimes[i, j] = data[i + 2, (j * 4)]
-#             costReductions[i, j] = data[i + 2, (j * 4) + 1]
-#             avgNumDerivs[i, j] = data[i + 2, (j * 4) + 2]
-#             avgTimeGettingDerivs[i, j] = data[i + 2, (j * 4) + 3]
-
-    
-#     # fig, axes = plt.subplots(1, 1, figsize = (7,5))
-#     # boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
-#     # yAxisLabel = "Total optimisation time (s)"
-#     # orange = "#edb83b"
-#     # bp1 = box_plot(optTimes, orange, yAxisLabel, axes, labels)
-#     # plt.savefig('plot_times.svg', format='svg', dpi=1200, transparent = True)
-#     # plt.show()
-
-#     fig, axes = plt.subplots(1, 1, figsize = (7,5))
-#     boxPlotTitle = "Optimisation time against interpolation methods " + "panda_pushing_clutter"
-#     yAxisLabel = "Cost Reduction"
-#     orange = "#edb83b"
-#     bp1 = box_plot(costReductions, orange, yAxisLabel, axes, labels)
-#     plt.savefig('cost_reductions.svg', format='svg', dpi=1200, transparent = True)
-#     plt.show()
-
 def plotOneTask(taskName, testNumber):
 
     dataNumber = str(testNumber)
@@ -269,8 +213,9 @@ def plotResults():
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
     # taskNames = ["panda_pushing"]
-    taskNames = ["panda_reaching"]
-    testNumber = 9
+    taskNames = ["acrobot"]
+    testNumber = "10"
+    # testNumber = 10
 
     for i in range(len(taskNames)):
         plotOneTask(taskNames[i], testNumber)

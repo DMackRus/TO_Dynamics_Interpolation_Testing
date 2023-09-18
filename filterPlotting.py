@@ -3,14 +3,20 @@ import matplotlib.pyplot as plt
 from numpy import genfromtxt
 
 def pltFilterData(modelName):
-    # data_list = np.array([[0, 0, 0]])
-    # data_2 = np.array([[1, 1, 1]])
 
-    # test = np.concatenate((data_list, data_2), axis=0)
-    # print(test)
     unfiltered_data = returnUnfilteredLists(modelName)
-    # tests = ["1Hz","50Hz","100Hz","200Hz", "500Hz"]
-    tests = ["FIR_0", "FIR_1", "FIR_2", "FIR_3", "FIR_4"]
+    # tests_FIR = ["FIR_0", "FIR_1", "FIR_2", "FIR_3", "FIR_4"]
+    tests_FIR = ["FIR_0"]
+    # tests_lowPass = ["lowPass0.050000", "lowPass0.100000", "lowPass0.150000", "lowPass0.200000", "lowPass0.250000", "lowPass0.300000"]
+    tests_lowPass = ["lowPass0.200000"]
+    num_tests_FIR = len(tests_FIR)
+
+    tests = tests_FIR + tests_lowPass
+    plot_unfiltered = True
+
+    orange = '#FFA500'
+    green = '#008000'
+    black = '#000000'
 
     for i in range(len(tests)):
         fileExtension = tests[i]
@@ -18,22 +24,23 @@ def pltFilterData(modelName):
         filtered_data = returnFilteredLists(modelName, fileExtension)
         avgCostDiff, avgFiltered, avgUnfiltered = averageDiffPerIteration(unfiltered_data, filtered_data)
 
-        # plt.plot(avgCostDiff, label = 'cost diff')
-        plt.plot(avgUnfiltered, label = 'unfiltered')
-        plt.plot(avgFiltered, label = 'filtered')
+        if plot_unfiltered:
+            plt.plot(avgUnfiltered, label = 'unfiltered', linewidth = 1, color = black)
+            plot_unfiltered = False
+
+        if(i < num_tests_FIR):
+            plt.plot(avgFiltered, label = fileExtension)
+        else:
+            plt.plot(avgFiltered, label = fileExtension)
+
+
         plt.legend()
-        plt.title("Average cost diff - " + tests[i])
-        plt.show()
+        plt.title("Average cost diff filtering" )
+        # plt.show()
+
+    plt.show()
 
     # average the differnece between the two numbers
-
-    # for i in range(50):
-
-    #     plt.plot(filtered_data[i], label = 'filtered')
-    #     plt.plot(unfiltered_data[i], label = 'unfiltered')
-    #     plt.title("plot " + str(i))
-    #     plt.legend()
-    #     plt.show()
 
 def averageDiffPerIteration(unfiltered, filtered):
     avgCostDiff = []
