@@ -156,19 +156,25 @@ class interpolator():
             if(key_points_w[-1] != self.trajecLength - 1):
                 key_points_w = np.append(key_points_w, self.trajecLength - 1)
 
-        all_interpolations = []
+        A_all_interpolations = []
+        B_all_interpolations = []
         for i in range(len(self.dynParams)):
-            all_interpolations.append(self.generateLinInterpolation(self.A_matrices, keyPoints_vel[i].copy(), key_points_w.copy()))
+            A_interpolation, B_interpolation = self.generateLinInterpolation(self.A_matrices, self.B_matrices, keyPoints_vel[i].copy(), key_points_w.copy())
+            A_all_interpolations.append(A_interpolation)
+            B_all_interpolations.append(B_interpolation)
 
-        #store lininterp and quadratic interp into interpolateTrajectory
-        interpolatedTrajectory = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.numStates))
+        interpolatedTrajectory_A = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.numStates))
+        interpolatedTrajectory_B = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.num_ctrl))
         errors = np.zeros((len(self.dynParams)))
 
         for i in range(len(self.dynParams)):
-            interpolatedTrajectory[i,:,:,:] = all_interpolations[i].copy()
-            errors[i] = self.calcErrorOverTrajectory(self.A_matrices, all_interpolations[i])
+            interpolatedTrajectory_A[i,:,:,:] = A_all_interpolations[i].copy()
+            errors[i] = self.calcErrorOverTrajectory(self.A_matrices, A_all_interpolations[i])
+            print("error from A: ", errors[i])
+            errors[i] += self.calcErrorOverTrajectory(self.B_matrices, B_all_interpolations[i])
+            print("error from B: ", errors[i])
 
-        return self.filteredTrajectory, interpolatedTrajectory, self.A_matrices, errors, keyPoints_vel, key_points_w
+        return self.filteredTrajectory, interpolatedTrajectory_A, self.A_matrices, errors, keyPoints_vel, key_points_w
     
     def calcErrorOverTrajectory(self, groundTruth, prediction):
         '''
@@ -176,27 +182,17 @@ class interpolator():
         trajectory and our interpolation
 
         '''
-        sum_abs_diff = np.zeros((self.dof_vel, self.numStates))
+        sum_abs_diff = np.zeros((groundTruth.shape[1], groundTruth.shape[2]))
         for t in range(self.trajecLength):
             sum_abs_diff += abs((groundTruth[t] - prediction[t]))
 
-        mean_sum_squared = np.sum(sum_abs_diff) / self.trajecLength
-        
-        # meanSqDiff = np.zeros((groundTruth.shape[1]))
+        #Average over the trajectory
+        sum_abs_diff /= self.trajecLength
 
-        # # Loop over the matrix values
-        # for i in range(len(meanSqDiff)):
+        # Aevrage over the size of the matrix
+        MAE = np.sum(sum_abs_diff) / (groundTruth.shape[1] * groundTruth.shape[2])
 
-        #     sumAbsDiff = 0
-        #     # Loop over trajectory length
-        #     for j in range(self.trajecLength):
-        #         sumAbsDiff += abs((groundTruth[j, i] - prediction[j, i]))
-
-        #     meanSqDiff[i] = sumAbsDiff / self.trajecLength
-
-        # meanSumSquared = np.sum(meanSqDiff)
-
-        return mean_sum_squared 
+        return MAE 
     
     def returnTrajecInformation(self):
         self.jerkProfile = self.calcJerkOverTrajectory(self.states)
@@ -641,16 +637,27 @@ class interpolator():
                 startVals_pos = A_matrices[start_index, :, i]
                 startVals_vel = A_matrices[start_index, :, i + self.dof_pos]
 
+                if(i < self.num_ctrl):
+                    startVals_B = B_matrices[start_index, :, i]
+
                 endVals_pos = A_matrices[end_index, :, i]
                 endVals_vel = A_matrices[end_index, :, i + self.dof_pos]
 
-                diff_pos = endVals_pos - startVals_pos
+                if(i < self.num_ctrl):
+                    endVals_B = B_matrices[end_index, :, i]
+
                 interval = end_index - start_index
+                diff_pos = endVals_pos - startVals_pos
                 diff_vel = endVals_vel - startVals_vel
+                if(i < self.num_ctrl):
+                    diff_B = endVals_B - startVals_B
 
                 for k in range(interval):
-                    linInterpolationData[start_index + k, :, i] = startVals_pos + (diff_pos * (k / interval))
-                    linInterpolationData[start_index + k, :, i + self.dof_pos] = startVals_vel + (diff_vel * (k / interval))
+                    A_linInterpolationData[start_index + k, :, i] = startVals_pos + (diff_pos * (k / interval))
+                    A_linInterpolationData[start_index + k, :, i + self.dof_pos] = startVals_vel + (diff_vel * (k / interval))
+
+                    if(i < self.num_ctrl):
+                        B_linInterpolationData[start_index + k, :, i] = startVals_B + (diff_B * (k / interval))
 
         # Handle any quaternions w interpolation
         for i in range(len(self.quat_w_indices)):
@@ -664,14 +671,14 @@ class interpolator():
                 diff = endVals - startVals
                 interval = end_index - start_index
 
-                linInterpolationData[start_index, :, self.quat_w_indices[i]] = startVals
+                A_linInterpolationData[start_index, :, self.quat_w_indices[i]] = startVals
 
                 for k in range(1, interval):
-                    linInterpolationData[start_index + k, :, self.quat_w_indices[i]] = startVals + (diff * (k / interval))
+                    A_linInterpolationData[start_index + k, :, self.quat_w_indices[i]] = startVals + (diff * (k / interval))
 
-        linInterpolationData[len(linInterpolationData) - 1,:] = linInterpolationData[len(linInterpolationData) - 2,:]
+        A_linInterpolationData[len(A_linInterpolationData) - 1,:] = A_linInterpolationData[len(A_linInterpolationData) - 2,:]
 
-        return linInterpolationData
+        return A_linInterpolationData, B_linInterpolationData
     
     def butter_lowpass_filter(self, data, cutoff, nyq, order):
         normal_cutoff = cutoff / nyq
