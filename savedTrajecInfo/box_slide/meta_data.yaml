@@ -1,0 +1,9 @@
+robots:
+  sawyer:
+    base: false
+    num_joints: 7
+    num_actuators: 7
+bodies:
+  cube:
+    positions: 3
+    orientation_no_w: 3

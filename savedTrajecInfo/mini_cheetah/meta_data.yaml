@@ -1,0 +1,5 @@
+robots:
+  cheetah:
+    base: true
+    num_joints: 12
+    num_actuators: 12

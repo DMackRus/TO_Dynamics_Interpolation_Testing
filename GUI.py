@@ -23,7 +23,8 @@ class dynamicsGUI():
         self.stateDisplayDof = 1
 
         self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "box_sweep",
-                                "panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter", "walker", "kinova_forward", "kinova_side", "kinova_lift"]
+                                "panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter", "walker", "kinova_forward", "kinova_side", "kinova_lift",
+                                "mini_cheetah", "box_slide"]
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
                                      [10, 200, 0.005, 0.005, 0.004], 
                                      [10, 200, 0.005, 0.005, 0.005],
@@ -37,7 +38,9 @@ class dynamicsGUI():
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [10, 200, 0.005, 0.005, 0.005],
                                      [2, 10, 0.0005, 0.0005, 0.0005],
-                                     [10, 200, 0.005, 0.005, 0.005]]
+                                     [10, 200, 0.005, 0.005, 0.005],
+                                     [1, 5, 0.1, 0.1, 1000],
+                                     [1, 5, 0.1, 0.1, 0.1]]
 
         # dictionary of starting dyn params
         self.startingDynParamsDict = {}

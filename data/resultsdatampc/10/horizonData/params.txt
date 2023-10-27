@@ -1,0 +1,13 @@
+parameters:
+
+magvel_change 1
+minn 1 maxn 5 vel changes: [0.1, 0.1, 0.001, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+magvel_change 2
+min 2: maxn 10 vel changes [0.1, 0.1, 0.001, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+adaptive jerk 1
+min 1 maxn 10 jerk thresholds [0.1, 0.02, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+adaptive jerk 2
+minn 2 max n 10 jerk thresholds [[1e-15, 1e-15, 0.01, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]]

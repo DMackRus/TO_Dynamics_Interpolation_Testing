@@ -2,8 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import colorsys
 
-                    #Dark blue, dark red, dark green, light blue, dark red, light green
-DIVERGENT_COLORS = ["#0000FF",  "#FF0000",  "#008000", "#3399FF", "#FF6666",  "#66FF66"]
+                    #Dark blue, dark red, dark green, light blue, purple, light green
+DIVERGENT_COLORS = ["#0000FF",  "#FF0000",  "#008000", "#3399FF", "#e303fc",  "#66FF66"]
+ROYAL_COLORS = [
+    "#4169E1",  # Royal Blue
+    "#DC143C",  # Crimson Red
+    "#008000",  # Emerald Green
+    "#FFD700",  # Golden Yellow
+    "#333333",  # Charcoal Gray
+    "#9966CC",  # Amethyst Purple
+    "#FFA500"   # Tangerine Orange
+]
+
 
 SHADES_OF_BLUE = ["#0000FF", "#4169E1", "#87CEEB"]
 SHADES_OF_GREEN = ["#006400", "#008000", "#00FF00"]
@@ -58,7 +68,7 @@ def box_plot(data, fill_color, yAxisTitle, ax, labels, logyAxis = False, baselin
         
     return bp   
 
-def linegraph(data, ax, line_color, yAxisTitle, xAxisTitle, xTicks, labels, logyAxis = False):
+def linegraph(data, ax, line_color, yAxisTitle, xAxisTitle, xTicks, labels, legend = None, logyAxis = False):
     normalPosterColour = "#103755"
     highlightPosterColor = "#EEF30D"
 
@@ -78,7 +88,9 @@ def linegraph(data, ax, line_color, yAxisTitle, xAxisTitle, xTicks, labels, logy
     if logyAxis:
         ax.set_yscale('log')
 
-    plt.legend()
+    if(legend != None):
+        print(yAxisTitle)
+        ax.legend(handles=legend)
 
     return ax
 
@@ -99,12 +111,13 @@ def stackedBarGraph(data, ax, colors, yAxisTitle, xAxisTitle, xTicks, labels, lo
 
     # baseline
     for i in range(len(data)):
-        ax.bar(x - width/1.8, data[i, 0], width, bottom = values[0], color = baseline_colors[i], label = labels[i] + " - baseline")
+        ax.bar(x - width/1.8, data[i, 0], width, bottom = values[0], color = baseline_colors[i], label = labels[i] + " - Baseline")
+        # ax.bar(x, data[i, 0], width, bottom = values[0], color = baseline_colors[i], label = labels[i] + " - baseline")
         values[0] += data[i, 0]
 
     # adaptive jerk
     for i in range(len(data)):
-        ax.bar(x + width/1.8, data[i, 1], width, bottom = values[1], color = adaptive_colors[i], label = labels[i] + " - adaptive_jerk")
+        ax.bar(x + width/1.8, data[i, 1], width, bottom = values[1], color = adaptive_colors[i], label = labels[i] + " - Mag vel change")
         values[1] += data[i, 1]
 
     xticks = []
@@ -121,28 +134,23 @@ def stackedBarGraph(data, ax, colors, yAxisTitle, xAxisTitle, xTicks, labels, lo
 
     return ax
 
-def generate_shades_of_hex_color(base_hex_color, num_shades):
-    # Convert the base hexadecimal color to RGB format
-    base_color = tuple(int(base_hex_color[i:i+2], 16) for i in (1, 3, 5))
-
-    # Convert the base color from RGB to HSV
-    base_color_hsv = colorsys.rgb_to_hsv(base_color[0] / 255.0, base_color[1] / 255.0, base_color[2] / 255.0)
-
-    # Generate shades by varying the value (brightness) component, but keep saturation high
-    shades = []
-    for i in range(num_shades):
-        value = max(0.4, base_color_hsv[2] * (1 - i / (num_shades - 1)))  # Vary the value from 0.2 (original) to 1.0 (original)
-        rgb_color = colorsys.hsv_to_rgb(base_color_hsv[0], 1.0, value)  # Keep saturation at 1.0
-        # Convert RGB values from [0.0, 1.0] to [0, 255] and round them to integers
-        rgb_color = tuple(int(val * 255) for val in rgb_color)
-        hex_color = "#{:02X}{:02X}{:02X}".format(*rgb_color)
-        shades.append(hex_color)
-
-    return shades
-
 if __name__ == "__main__":
-    darkBlue = (0, 0, 256)
-    shades_of_blue = generate_shades_of_color(darkBlue, 3)
-    print(shades_of_blue)
-    shades_of_blue = rgb_to_hex(shades_of_blue[0])
-    print(shades_of_blue)
+    derivs = np.array([2.2, 5.2, 20])
+    bp = np.array([0.05, 0.07, 0.18])
+    fp = np.array([0.2, 0.4, 0.7])
+    stackedData = np.zeros((3, 1, derivs.shape[0]))
+    
+    stackedData[0, 0, :] = derivs
+    stackedData[1, 0, :] = bp
+    stackedData[2, 0, :] = fp
+
+    # print("avg time getting derivs: " + str(avgTimesDerivsOther))
+    # stackedData[0, 1, :] = avgTimesDerivsOther
+    # stackedData[1, 1, :] = avgTimesBPOther
+    # stackedData[2, 1, :] = avgTimesFPOther
+
+
+    # data = np.array([[[1, 2, 3], [4, 5, 6]], [[1, 2, 3], [4, 5, 6]]])
+    ax = plt.subplot(111)
+    stackedBarGraph(stackedData, ax, DIVERGENT_COLORS, "Average time per iteration (s)", "Dimensionality of problem", ["9", "15", "23"], ["Derivs", "BP", "FP"])
+    plt.show()

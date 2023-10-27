@@ -1,0 +1,13 @@
+manipulation params
+
+adaptvie jerk 
+
+min N 5, max N 50 jerk thresholds in file
+
+magvel change 
+
+minN 5 maxN 50, vel thresholds in file
+
+iterative error:
+
+in file

@@ -43,6 +43,14 @@ class interpolator():
         self.dof_vel = 0
         self.num_ctrl = 0
         for robot in task_config['robots']:
+            try:
+                if(task_config['robots'][robot]['base'] == True):
+                    self.dof_pos += 7
+                    self.dof_vel += 6
+                    self.quat_w_indices.append(self.dof_pos - 4)
+            except:
+                pass
+
             self.dof_pos += task_config['robots'][robot]['num_joints']
             self.dof_vel += task_config['robots'][robot]['num_joints']
             self.num_ctrl += task_config['robots'][robot]['num_actuators']
@@ -52,18 +60,25 @@ class interpolator():
         if(len(self.bodies)):
             for body in task_config['bodies']:
                 self.dof_pos += task_config['bodies'][body]['positions']
-                self.dof_pos += task_config['bodies'][body]['orientations']
-
                 self.dof_vel += (task_config['bodies'][body]['positions'])
 
-                if( task_config['bodies'][body]['orientations'] == 4):
-                    self.dof_vel += 3
-                    self.quat_w_indices.append(self.dof_pos - 1)
+                # TODO - this is quite hard coded atm and untested for multiple bodies with different orientations
+                try:
+                    if(task_config['bodies'][body]['orientation_no_w'] == 3):
+                        self.dof_vel += 3
+                        self.dof_pos += 3
+                except:
+                    if( task_config['bodies'][body]['orientations'] == 4):
+                        self.dof_vel += 3
+                        self.dof_pos += task_config['bodies'][body]['orientations']
+                        self.quat_w_indices.append(self.dof_pos - 1)
 
         # print(f'dof pos: {self.dof_pos}, dof vel: {self.dof_vel}, num ctrl: {self.num_ctrl}')
         # print(f'quat w indices: {self.quat_w_indices}')
 
         # -------------------------------------------------------------------------------------------------
+
+
         
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -170,9 +185,9 @@ class interpolator():
         for i in range(len(self.dynParams)):
             interpolatedTrajectory_A[i,:,:,:] = A_all_interpolations[i].copy()
             errors[i] = self.calcErrorOverTrajectory(self.A_matrices, A_all_interpolations[i])
-            print("error from A: ", errors[i])
+            # print("error from A: ", errors[i])
             errors[i] += self.calcErrorOverTrajectory(self.B_matrices, B_all_interpolations[i])
-            print("error from B: ", errors[i])
+            # print("error from B: ", errors[i])
 
         return self.filteredTrajectory, interpolatedTrajectory_A, self.A_matrices, errors, keyPoints_vel, key_points_w
     

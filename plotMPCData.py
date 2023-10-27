@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 from numpy import genfromtxt
 import math
@@ -147,7 +148,7 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
                 avgTimeBPBaseline[j] = np.mean(avgTimeBP[:, j])
                 avgTimeFPBaseline[j] = np.mean(avgTimeFP[:, j])
 
-        if methods[i] == "SI20":
+        if methods[i] == "magvel_change2":
             for j in range(OPTIMISERS_USED):
                 avgTimesDerivsOther[j] = np.mean(avgTimeDerivs[:, j])
                 avgTimesBPOther[j] = np.mean(avgTimeBP[:, j])
@@ -167,25 +168,43 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
             # print("Mean control frequency: " + str(meanControlFrequencies[j]))
             # print("Std control frequency: " + str(stdControlFrequencies[j]))
 
-    colors = DIVERGENT_COLORS
 
-    # fig, axes = plt.subplots(2, 1, figsize = (6, 7))
-    # plotTitle = "Final cost against horizon length " + taskName
-    # yAxisLabel = "Final cost"
-    # linegraph1 = linegraph(finalCostsMethods, axes[0], colors, yAxisLabel, "horizon", labels, methods, logyAxis = False)
 
-    # boxPlotTitle = "Control frequency against interpolation methods " + taskName
-    # yAxisLabel = "Control frequency (Hz)"
-    # linegraph2 = linegraph(avgHzMethods, axes[1], colors, yAxisLabel, "horizon", labels, methods)
+    # print si 20 control frequnecy at horizon 80
+    print("--------------- avergae hz methods ---------------")
+    print(avgHzMethods)
 
-    # fig.suptitle(taskName + " - MPC horizons for keypoint methods", fontsize=16)
-    # plt.show()
+    colors = ROYAL_COLORS
+
+    legend_handles = [Line2D([0], [0], color=ROYAL_COLORS[0], linestyle='-', label='Baseline'),
+                  Line2D([0], [0], color=ROYAL_COLORS[1], linestyle='-', label='Adaptive jerk'),
+                  Line2D([0], [0], color=ROYAL_COLORS[2], linestyle='-', label='Set interval - minN: 5'),
+                  Line2D([0], [0], color=ROYAL_COLORS[3], linestyle='-', label='Set interval - minN: 20'),
+                  Line2D([0], [0], color=ROYAL_COLORS[4], linestyle='-', label='Mag vel change'),
+                  Line2D([0], [0], color=ROYAL_COLORS[5], linestyle='-', label='Iterative error')]
+
+    fig, axes = plt.subplots(2, 1, figsize = (6, 7))
+    plotTitle = "Final cost against horizon length " + taskName
+    yAxisLabel = "Final cost"
+    linegraph1 = linegraph(finalCostsMethods, axes[0], colors, yAxisLabel, "horizon", labels, methods, legend = legend_handles, logyAxis = False)
+
+    boxPlotTitle = "Control frequency against interpolation methods " + taskName
+    yAxisLabel = "Control frequency (Hz)"
+    linegraph2 = linegraph(avgHzMethods, axes[1], colors, yAxisLabel, "horizon", labels, methods)
+
+    fig.suptitle(taskName + " - MPC horizons for keypoint methods", fontsize=16)
+
+    # save figure as svg
+    plt.savefig("MPC_walker_plots.svg", format="svg")
+
+
+    plt.show()
 
 
     # Create stacked bar plot time getting derivs, bp and fp
     fig, axes = plt.subplots(1, 1, figsize = (7, 6))
     plotTitle = "Time taken to get derivatives, backprop and forward prop against horizon length " + taskName
-    yAxisLabel = "Time (ms)"
+    yAxisLabel = "Iteration time (ms)"
     stackedData = np.zeros((3, 2, OPTIMISERS_USED))
 
     print("avg time getting derivs: " + str(avgTimeDerivsBaseline))
@@ -205,7 +224,9 @@ def plotMPCHorizonData(taskName, methods, taskNumber):
 
     stackedBarGraph(stackedData, axes, colors, yAxisLabel, "horizon", labels, stackLabels)
 
-    fig.suptitle(taskName + " - MPC iterations times", fontsize=16)
+    # fig.suptitle(taskName + " - MPC iterations times", fontsize=16)
+    plt.savefig("MPC_walker_timings.svg", format="svg")
+
     plt.show()
 
 def getDataandLabels(filename):
@@ -230,6 +251,6 @@ def getDataandLabels(filename):
     
 if __name__ == "__main__":
     # methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "magvel_change", "iterative_error"]
-    methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "SI20", "magvel_change"]
-    plotMPCHorizonData("walker",  methods, 7)
+    methods = ["baseline", "adaptive_jerk", "SI5", "SI20", "magvel_change2", "iterative_error"]
+    plotMPCHorizonData("walker",  methods, 10)
     # plotMPCData("walker", 3)
