@@ -1,4 +1,0 @@
-robots:
-  doublePendulum:
-    num_joints: 2
-    num_actuators: 2

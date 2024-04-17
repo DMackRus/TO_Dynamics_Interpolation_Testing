@@ -1,0 +1,8 @@
+robots:
+  piston:
+    num_joints: 1
+    num_actuators: 1
+bodies:
+  box:
+    positions: 1
+    orientations: 0

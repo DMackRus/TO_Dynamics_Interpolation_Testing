@@ -1,8 +1,0 @@
-robots:
-  panda:
-    num_joints: 7
-    num_actuators: 7
-bodies:
-  cylinder:
-    positions: 2
-    orientations: 0

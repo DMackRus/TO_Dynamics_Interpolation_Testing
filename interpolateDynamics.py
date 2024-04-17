@@ -77,8 +77,6 @@ class interpolator():
         # print(f'quat w indices: {self.quat_w_indices}')
 
         # -------------------------------------------------------------------------------------------------
-
-
         
         pandas = pd.read_csv(startPath + "/" + str(self.trajecNumber) + '/A_matrices.csv', header=None)
         pandas = pandas[pandas.columns[:-1]]
@@ -99,10 +97,7 @@ class interpolator():
         pandas = pandas[pandas.columns[:-1]]
         rows, cols = pandas.shape
 
-        self.numStates = self.dof_pos + self.dof_vel
-        self.keyPointsSize = self.numStates + self.num_ctrl
-        # TODO check if this is right???
-        self.sizeOfAMatrix = self.numStates * self.numStates
+        self.num_states = self.dof_pos + self.dof_vel
 
         tempPandas = pandas.iloc[0:self.trajecLength]
         self.states = tempPandas.to_numpy()
@@ -115,24 +110,21 @@ class interpolator():
         tempPandas = pandas.iloc[0:self.trajecLength]
         self.controls = tempPandas.to_numpy()
 
-        self.A_matrices = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
-        self.B_matrices = np.zeros((self.trajecLength, self.dof_vel, self.num_ctrl))
+        self.A_matrices = np.zeros((self.trajecLength, self.num_states, self.num_states))
+        self.B_matrices = np.zeros((self.trajecLength, self.num_states, self.num_ctrl))
 
         #reshape 2nd index into two indices
-        # self.A_matrices = self.A_matrices_load.reshape((self.trajecLength, self.dof_vel, self.numStates))
+        # self.A_matrices = self.A_matrices_load.reshape((self.trajecLength, self.dof_vel, self.num_states))
         for i in range(self.trajecLength):
-            for j in range(self.dof_vel):
-                for k in range(self.numStates):
-                    self.A_matrices[i][j][k] = self.A_matrices_load[i][j*self.numStates + k]
+            for j in range(self.num_states):
+                for k in range(self.num_states):
+                    self.A_matrices[i][j][k] = self.A_matrices_load[i][j*self.num_states + k]
 
         # load the B_matrices values
         for i in range(self.trajecLength):
-            for j in range(self.dof_vel):
+            for j in range(self.num_states):
                 for k in range(self.num_ctrl):
                     self.B_matrices[i][j][k] = self.B_matrices_load[i][j*self.num_ctrl + k]
-
-        # column 0 
-        # for i in range(self.trajecLength):
             
 
         if(0):
@@ -158,7 +150,7 @@ class interpolator():
 
         self.dynParams = []
 
-    def interpolateTrajectory(self, trajecNumber, dynParams):
+    def InterpolateTrajectory(self, trajecNumber, dynParams):
 
         self.dynParams = dynParams
         keyPoints_vel = self.generateKeypoints(self.A_matrices, self.B_matrices, self.states.copy(), self.controls.copy(), self.dynParams.copy())
@@ -178,8 +170,8 @@ class interpolator():
             A_all_interpolations.append(A_interpolation)
             B_all_interpolations.append(B_interpolation)
 
-        interpolatedTrajectory_A = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.numStates))
-        interpolatedTrajectory_B = np.zeros((len(self.dynParams), self.trajecLength, self.dof_vel, self.num_ctrl))
+        interpolatedTrajectory_A = np.zeros((len(self.dynParams), self.trajecLength, self.num_states, self.num_states))
+        interpolatedTrajectory_B = np.zeros((len(self.dynParams), self.trajecLength, self.num_states, self.num_ctrl))
         errors = np.zeros((len(self.dynParams)))
 
         for i in range(len(self.dynParams)):
@@ -639,8 +631,8 @@ class interpolator():
         return mean_sq_diff
     
     def generateLinInterpolation(self, A_matrices, B_matrices, reEvaluationIndicies, key_points_w):
-        A_linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.numStates))
-        B_linInterpolationData = np.zeros((self.trajecLength, self.dof_vel, self.num_ctrl))
+        A_linInterpolationData = np.zeros((self.trajecLength, self.num_states, self.num_states))
+        B_linInterpolationData = np.zeros((self.trajecLength, self.num_states, self.num_ctrl))
 
         for i in range(self.dof_vel):
             for j in range(len(reEvaluationIndicies[i]) - 1):
@@ -731,7 +723,7 @@ def ICRATemp():
 
     dynParams = [5, 200, 0.0005]
 
-    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, reEvaluationIndices, iterativeKeyPoints = myInterp.interpolateTrajectory(0, dynParams)
+    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, reEvaluationIndices, iterativeKeyPoints = myInterp.InterpolateTrajectory(0, dynParams)
             
     index = 13
 
@@ -766,7 +758,7 @@ def test():
     minN = 5
     maxN = 100
     dynParams = [derivative_interpolator(method, minN, maxN, 0.005, 0.005, 0.0005, 0)]
-    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, keyPoints, key_points_w = myinterp.interpolateTrajectory(0, dynParams)
+    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, keyPoints, key_points_w = myinterp.InterpolateTrajectory(0, dynParams)
 
 
     row = 5

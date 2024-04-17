@@ -1,4 +1,0 @@
-robots:
-  panda:
-    num_joints: 7
-    num_actuators: 7

@@ -7,6 +7,8 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 from numpy import genfromtxt
 from interpolateDynamics import *
 from matplotlib.offsetbox import AnchoredText
+import dataclasses
+    
 
 class dynamicsGUI():
     def __init__(self, master):
@@ -14,7 +16,7 @@ class dynamicsGUI():
         self.master.title("GUI")
         self.master.geometry("1400x900")
         self.master.resizable(True, True)
-        self.master.title('Interactive Dynamics')
+        self.master.title('TrajOptKP - Dynamics gradients interpolation playground')
         
         self.interpolationTypes = ["setInterval", "adaptiveAccel", "adaptiveJerk", "iterativeError", "magVelChange"]
         self.interpTypeNum = 2
@@ -22,25 +24,10 @@ class dynamicsGUI():
         self.stateDisplayNumber = 1
         self.stateDisplayDof = 1
 
-        self.taskNames = ["doublePendulum", "acrobot", "panda_reaching", "panda_pushing", "panda_pushing_low_clutter", "panda_pushing_heavy_clutter", "box_sweep",
-                                "panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter", "walker", "kinova_forward", "kinova_side", "kinova_lift",
-                                "mini_cheetah", "box_slide"]
+        self.taskNames = ["acrobot", "piston_block"]
+        
         self.startingDynParams = [[5, 50, 0.1, 0.1, 0.000007],
-                                     [10, 200, 0.005, 0.005, 0.004], 
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005], 
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005], 
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [2, 10, 0.0005, 0.0005, 0.0005],
-                                     [10, 200, 0.005, 0.005, 0.005],
-                                     [1, 5, 0.1, 0.1, 1000],
-                                     [1, 5, 0.1, 0.1, 0.1]]
+                                     [10, 200, 0.005, 0.005, 0.004]]
 
         # dictionary of starting dyn params
         self.startingDynParamsDict = {}
@@ -60,6 +47,7 @@ class dynamicsGUI():
         self.trajectoryNumber = 0
         self.dof_pos = 0
         self.dof_vel = 0
+        self.num_states = 0
         self.num_ctrl = 0
 
         self.setupGUI()
@@ -362,8 +350,8 @@ class dynamicsGUI():
     def incdisplayIndexRow_callback(self):
         val = int(self.entry_displayIndexRow.get())
         val = val + 1
-        if val > self.dof_vel - 1:
-            val = self.dof_vel - 1
+        if val > self.num_states - 1:
+            val = self.num_states - 1
         self.entry_displayIndexRow.delete(0, END)
         self.entry_displayIndexRow.insert(0, val)
         self.updatePlot_derivatives()
@@ -380,8 +368,8 @@ class dynamicsGUI():
     def incdisplayIndexCol_callback(self):
         val = int(self.entry_displayIndexCol.get())
         val = val + 1
-        if val > (self.dof_pos + self.dof_vel) - 1:
-            val = (self.dof_pos + self.dof_vel) - 1
+        if val > (self.num_states) - 1:
+            val = (self.num_states) - 1
         self.entry_displayIndexCol.delete(0, END)
         self.entry_displayIndexCol.insert(0, val)
         self.updatePlot_derivatives()
@@ -474,6 +462,7 @@ class dynamicsGUI():
         self.interpolator = interpolator(self.task, self.trajectoryNumber)
         self.dof_pos = self.interpolator.dof_pos
         self.dof_vel = self.interpolator.dof_vel
+        self.num_states = self.dof_pos + self.dof_vel
         self.num_ctrl = self.interpolator.num_ctrl
 
         defaultDynParamsForTask = self.startingDynParamsDict[self.task]
@@ -567,16 +556,13 @@ class dynamicsGUI():
             pass
         else:
             self.dynParams = dynParams
-            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints, self.key_points_w = self.interpolator.interpolateTrajectory(0, self.dynParams)
+            self.trueTrajec, self.interpolatedTrajec, self.unfilteredTrajec, self.errors, self.keyPoints, self.key_points_w = self.interpolator.InterpolateTrajectory(0, self.dynParams)
 
-        index = (int(self.entry_displayIndexRow.get()) * (self.dof_pos + self.dof_vel)) + int(self.entry_displayIndexCol.get())
+        index = (int(self.entry_displayIndexRow.get()) * (2 * (self.dof_pos + self.dof_vel))) + int(self.entry_displayIndexCol.get())
 
         row = int(self.entry_displayIndexRow.get())
         col = int(self.entry_displayIndexCol.get())
         keyPoints_col = 0
-
-        print("self.dof_pos: " + str(self.dof_pos))
-        print("self.dof_vel: " + str(self.dof_vel))
 
         # get the column
         # check it against size of dof vel

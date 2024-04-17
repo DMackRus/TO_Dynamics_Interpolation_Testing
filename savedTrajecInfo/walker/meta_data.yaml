@@ -1,4 +1,0 @@
-robots:
-  walker:
-    num_joints: 9
-    num_actuators: 6
