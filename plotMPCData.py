@@ -251,6 +251,6 @@ def getDataandLabels(filename):
     
 if __name__ == "__main__":
     # methods = ["baseline", "adaptive_jerk", "SI10", "SI5", "magvel_change", "iterative_error"]
-    methods = ["baseline", "adaptive_jerk", "SI5", "SI20", "magvel_change2", "iterative_error"]
-    plotMPCHorizonData("walker",  methods, 10)
+    methods = ["baseline", "adaptive_jerk2", "SI5", "SI20", "magvel_change2", "iterative_error"]
+    plotMPCHorizonData("walker",  methods, 11)
     # plotMPCData("walker", 3)

@@ -11,9 +11,11 @@ def plotOneTask(taskName, testNumber):
 
     dataNumber = str(testNumber)
 
-    data = np.array([genfromtxt('data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv', delimiter = ',')])
+    file_name = 'data/resultsData/' + dataNumber + "/" + taskName + '_testingData.csv'
+    print("filename: " + str(file_name))
+    data = np.array([genfromtxt(file_name, delimiter = ',')])
 
-    file = open('data/resultsData/'  + dataNumber + "/" + taskName + '_testingData.csv', "r")
+    file = open(file_name, "r")
     headers = list(csv.reader(file, delimiter=","))
     file.close()
 
@@ -213,8 +215,8 @@ def plotResults():
     # taskNames = ["panda_pushing", "panda_pushing_clutter", "panda_pushing_heavy_clutter"]
     # taskNames = ["panda_box_flick", "panda_box_flick_low_clutter", "panda_box_flick_heavy_clutter"]
     # taskNames = ["panda_pushing"]
-    taskNames = ["acrobot"]
-    testNumber = "10"
+    taskNames = ["push_hCl"]
+    testNumber = "12"
     # testNumber = 10
 
     for i in range(len(taskNames)):

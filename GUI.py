@@ -575,6 +575,9 @@ class dynamicsGUI():
         col = int(self.entry_displayIndexCol.get())
         keyPoints_col = 0
 
+        print("self.dof_pos: " + str(self.dof_pos))
+        print("self.dof_vel: " + str(self.dof_vel))
+
         # get the column
         # check it against size of dof vel
         #TODO - fix this for multiple quaternions
@@ -645,7 +648,7 @@ class dynamicsGUI():
 
         dynParams = [None] * len(self.interpolationTypes)
         for i in range(len(self.interpolationTypes)):
-            dynParams[i] = derivative_interpolator(self.interpolationTypes[i], minN, maxN, acellSensitivity, jerkSensitivity, iterativeErrorThreshold, 2)
+            dynParams[i] = derivative_interpolator(self.interpolationTypes[i], minN, maxN, acellSensitivity, jerkSensitivity, iterativeErrorThreshold, velChangeSensitivity)
 
         return dynParams
     

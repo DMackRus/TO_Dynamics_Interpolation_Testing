@@ -758,7 +758,106 @@ def ICRATemp():
 
     index += 1
 
+def test():
+    myinterp = interpolator("panda_pushing_heavy_clutter", 1)
+
+    interpolationTypes = ["setInterval", "adaptiveAccel", "adaptiveJerk", "iterativeError", "magVelChange"]
+    method = interpolationTypes[3]
+    minN = 5
+    maxN = 100
+    dynParams = [derivative_interpolator(method, minN, maxN, 0.005, 0.005, 0.0005, 0)]
+    trueTrajec, interpolatedTrajec, unfilteredTrajec, errors, keyPoints, key_points_w = myinterp.interpolateTrajectory(0, dynParams)
+
+
+    row = 5
+    col = 25
+
+    dof_pos = 23
+    dof_vel = 23
+
+    index = (row * (dof_pos + dof_vel)) + col
+
+    
+    keyPoints_col = 0
+
+    # get the column
+    # check it against size of dof vel
+    #TODO - fix this for multiple quaternions
+    if(len(key_points_w) and col == dof_pos - 1):
+        displayKeypoints = key_points_w
+        highlightedIndices = np.copy(unfilteredTrajec[displayKeypoints, row, col])
+    else:
+        displayKeypoints = keyPoints[0]
+        # 0 -> dof_pos - 1, dof_pos -> dof_pos + dof_vel - 1
+        if(col >= dof_pos):
+            keyPoints_col = col - dof_pos
+        else:
+            keyPoints_col = col
+        # displayKeypoints = displayKeypoints[col % self.dof_vel]
+        displayKeypoints = displayKeypoints[keyPoints_col]
+        highlightedIndices = np.copy(unfilteredTrajec[displayKeypoints, row, col])
+
+    numEvals = len(displayKeypoints)
+
+    black = '#000000'
+    # red = '#f70f0f'
+
+    dark_blue = '#1E90FF'
+    red = '#fa2020'
+
+
+    plt.figure(figsize=(10, 3))
+    plt.plot(trueTrajec[:, row, col], color = black, label='Ground truth')
+    plt.scatter(displayKeypoints, highlightedIndices, s=20, color = red, zorder=10)
+    plt.plot(interpolatedTrajec[0, :, row, col], color = red, label = 'Interpolated')
+    plt.show()
+
+        # self.plot_AB.clear()
+
+        # if(self.showFilter):
+        #     print("showing filtered trajectory")
+        #     self.plot_AB.plot(self.trueTrajec[:, row, col], color = 'orange', label='Ground truth')
+
+        # self.plot_AB.plot(self.unfilteredTrajec[:, row, col], color = self.black, label='Unfiltered')
+
+        # # Plot keypoints
+        # self.plot_AB.scatter(displayKeypoints, highlightedIndices, s=10, color = self.yellow, zorder=10)
+
+        # self.plot_AB.plot(self.interpolatedTrajec[self.interpTypeNum, :, row, col], color = self.yellow, label = 'Interpolated')
+        # self.plot_AB.legend(loc='upper right')
+        # self.plot_AB.set_title('A matrix val over trajectory', fontsize=15, color= self.white, fontweight='bold')
+
+        # # set y lims
+        # minVal = np.min(self.unfilteredTrajec[:,row, col])
+        # maxVal = np.max(self.unfilteredTrajec[:,row, col])
+
+        # if (maxVal - minVal < 0.1):
+        #     self.plot_AB.set_ylim([minVal - 0.05, maxVal + 0.05])
+        
+
+        # evalsString = "Evals: " + str(self.numEvals)
+
+        # # Anchor text above plot - offset from plot by 10%
+        # at = AnchoredText(evalsString, loc='upper left', prop=dict(size=8), frameon=True, bbox_to_anchor=(0.9, 1.1), bbox_transform=self.plot_AB.transAxes)
+        
+        # at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        # self.plot_AB.add_artist(at)
+
+
+        # at2 = AnchoredText("Error: " + str(round(self.errors[self.interpTypeNum], 2)) + "",
+        #                loc='lower left', prop=dict(size=8), frameon=True,
+        #                bbox_to_anchor=(0., 1.05),
+        #                bbox_transform=self.plot_AB.transAxes
+        #                )
+        # at2.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        # self.plot_AB.add_artist(at2)
+        # self.canvas_AB.draw()
+
+
+
+
 if __name__ == "__main__":
+    test()
 
     # Generate a sine curve with 100 points
     x = np.linspace(0, 1, 100)
